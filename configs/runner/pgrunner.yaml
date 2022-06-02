@@ -1,0 +1,10 @@
+_target_: src.runner.PGRunner
+params:
+  total_timesteps: 500000
+  rollout_threads: 64
+  env_steps: 25
+  lr_decay: True
+  n_agents: 3
+  eval_episodes: 100
+  comet:
+    project_name: corl
