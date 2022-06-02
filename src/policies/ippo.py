@@ -56,6 +56,7 @@ class IPPO(nn.Module):
                 1, 
                 std=1.0,
                 activation=self.activation) for _ in range(self.n_agents)])
+        
         if self.shared_actor:
             self.actor = MLP(
                 np.array(self.obs_shape).prod(), 

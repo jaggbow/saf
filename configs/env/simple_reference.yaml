@@ -1,0 +1,7 @@
+name: simple_reference
+family: mpe
+rollout_threads: 64
+params: 
+  local_ratio: 0.5
+  max_cycles: 25
+  continuous_actions: False

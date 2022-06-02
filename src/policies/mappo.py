@@ -39,13 +39,22 @@ class MAPPO(nn.Module):
         self.max_grad_norm = params.max_grad_norm
         self.target_kl = params.target_kl
         self.update_epochs = params.update_epochs
+        self.shared_critic = params.shared_critic
 
-        self.critic = nn.ModuleList([MLP(
-            self.n_agents * np.array(self.obs_shape).prod(), 
-            [self.hidden_dim]*self.n_layers, 
-            1, 
-            std=1.0,
-            activation=self.activation) for _ in range(self.n_agents)])
+        if self.shared_critic:
+            self.critic = MLP(
+                self.n_agents * np.array(self.obs_shape).prod(), 
+                [self.hidden_dim]*self.n_layers, 
+                1, 
+                std=1.0,
+                activation=self.activation)
+        else:
+            self.critic = nn.ModuleList([MLP(
+                self.n_agents * np.array(self.obs_shape).prod(), 
+                [self.hidden_dim]*self.n_layers, 
+                1, 
+                std=1.0,
+                activation=self.activation) for _ in range(self.n_agents)])
 
         self.actor = MLP(
             np.array(self.obs_shape).prod(), 
@@ -66,7 +75,10 @@ class MAPPO(nn.Module):
         values = []
         state = x.reshape(x.shape[0], -1)
         for i in range(self.n_agents): 
-            values.append(self.critic[i](state))
+            if self.shared_critic:
+                values.append(self.critic(state))
+            else:
+                values.append(self.critic[i](state))
         values = torch.stack(values, dim=1).squeeze(-1)
         return values
 
