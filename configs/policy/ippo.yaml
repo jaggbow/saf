@@ -1,20 +1,20 @@
 _target_: src.policies.ippo.IPPO
 params:
   n_layers: 2
-  hidden_dim: 64
-  learning_rate: 0.0003
+  hidden_dim: 128
+  learning_rate: 0.001
   gamma: 0.99
   gae_lambda: 0.95
-  gae: True
+  gae: False
   n_agents: 3
   ent_coef: 0.01
   vf_coef: 0.5
   norm_adv: True
   clip_coef: 0.2
   clip_vloss: True
-  max_grad_norm: 0.5
+  max_grad_norm: 9
   target_kl: null
-  update_epochs: 5
+  update_epochs: 10
   num_minibatches: 1
   rollout_threads: 64
   env_steps: 25

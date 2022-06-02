@@ -3,7 +3,7 @@
 #SBATCH --job-name=ippo_spread
 #SBATCH --partition=long                        
 #SBATCH --cpus-per-task=6
-#SBATCH --gres=gpu:turing:48gb:1        
+#SBATCH --gres=gpu:rtx8000:1
 #SBATCH --mem=60G                                     
 #SBATCH --time=4:00:00
 #SBATCH -o /network/scratch/o/oussama.boussif/slurms/ippo_spread-slurm-%j.out  
