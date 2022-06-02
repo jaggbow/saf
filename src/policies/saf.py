@@ -39,6 +39,26 @@ class SAF(nn.Module):
         self.max_grad_norm = params.max_grad_norm
         self.target_kl = params.target_kl
         self.update_epochs = params.update_epochs
+        self.has_continuous_action_space = False
+        self.latent_kl = False
+        self.pool_policy = False
+
+
+        #SAF params
+        self.N_SK_slots = 3   #attention heads
+        self.actor_dims = []
+        for i in range(self.n_agents):
+            self.actor_dims.append(self.obs_shape[0])
+        self.critic_dims = sum(self.actor_dims)
+        ###keys for attention mechanisms 
+        input_dim=self.critic_dims
+        key_dim=self.critic_dims
+        self.action_std = 0.06
+        self.lr_comm = 0.001
+        if self.pool_policy:
+            self.n_policy = 10
+        else:
+            self.n_policy = self.n_agents
 
         self.critic = nn.ModuleList([MLP(
             np.array(self.obs_shape).prod(), 
@@ -54,11 +74,11 @@ class SAF(nn.Module):
             std=0.01,
             activation=self.activation) for _ in range(self.n_agents)])
         
-        self.comm_policy=Communication_and_policy(input_dim, key_dim,self.N_SK_slots,n_agents,self.n_policy,n_actions,self.action_std,has_continuous_action_space, self.latent_kl, self.pool_policy))
+        self.comm_policy=Communication_and_policy(input_dim, key_dim, self.N_SK_slots, self.n_agents, self.n_policy, self.action_dim, self.action_std, self.has_continuous_action_space, self.latent_kl, self.pool_policy)
         
         self.optimizer = optim.Adam([
-        {'params': self.parameters(), 'lr': self.learning_rate, 'eps': 1e-5},
-        {'params': self.comm_policy.parameters(), 'lr': lr_comm, 'eps': 1e-5}
+        {'params': self.parameters(), 'lr': self.learning_rate},
+        {'params': self.comm_policy.parameters(), 'lr': self.lr_comm}
         ])
 
     def get_value(self, x):
@@ -258,10 +278,11 @@ class SAF(nn.Module):
 class Communication_and_policy(nn.Module):
     def __init__(self, input_dim, key_dim,N_SK_slots,n_agents,n_policy,action_dim,action_std,has_continuous_action_space, latent_kl, pool_policy):
         super(Communication_and_policy,self).__init__()
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.has_continuous_action_space = has_continuous_action_space
         self.N_SK_slots=N_SK_slots
         #print('action_dim', action_dim)
-        self.action_probs_var = torch.full((action_dim,), action_std * action_std).to(device)
+        self.action_probs_var = torch.full((action_dim,), action_std * action_std).to(self.device)
         self.n_agents=n_agents
         self.latent_kl = latent_kl
         
@@ -273,7 +294,7 @@ class Communication_and_policy(nn.Module):
         self.key_dim=key_dim
        
         
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
         ##Vedant's code
         self.num_agents = n_agents
         self.message_projectors = nn.ModuleList([nn.Linear(key_dim, 18) for _ in range(self.num_agents)])
