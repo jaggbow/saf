@@ -28,6 +28,8 @@ class IPPO(nn.Module):
         self.gae_lambda = params.gae_lambda
         self.gae = params.gae
         self.n_agents = params.n_agents
+        self.shared_actor = params.shared_actor
+        self.shared_critic = params.shared_critic
 
         self.batch_size = params.rollout_threads * params.env_steps
         self.minibatch_size = self.batch_size // params.num_minibatches
@@ -40,19 +42,34 @@ class IPPO(nn.Module):
         self.target_kl = params.target_kl
         self.update_epochs = params.update_epochs
 
-        self.critic = nn.ModuleList([MLP(
-            np.array(self.obs_shape).prod(), 
-            [self.hidden_dim]*self.n_layers, 
-            1, 
-            std=1.0,
-            activation=self.activation) for _ in range(self.n_agents)])
-
-        self.actor = nn.ModuleList([MLP(
-            np.array(self.obs_shape).prod(), 
-            [self.hidden_dim]*self.n_layers, 
-            self.action_dim, 
-            std=0.01,
-            activation=self.activation) for _ in range(self.n_agents)])
+        if self.shared_critic:
+            self.critic = MLP(
+                np.array(self.obs_shape).prod(), 
+                [self.hidden_dim]*self.n_layers, 
+                1, 
+                std=1.0,
+                activation=self.activation)
+        else:
+            self.critic = nn.ModuleList([MLP(
+                np.array(self.obs_shape).prod(), 
+                [self.hidden_dim]*self.n_layers, 
+                1, 
+                std=1.0,
+                activation=self.activation) for _ in range(self.n_agents)])
+        if self.shared_actor:
+            self.actor = MLP(
+                np.array(self.obs_shape).prod(), 
+                [self.hidden_dim]*self.n_layers, 
+                self.action_dim, 
+                std=0.01,
+                activation=self.activation)
+        else:
+            self.actor = nn.ModuleList([MLP(
+                np.array(self.obs_shape).prod(), 
+                [self.hidden_dim]*self.n_layers, 
+                self.action_dim, 
+                std=0.01,
+                activation=self.activation) for _ in range(self.n_agents)])
         
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5)
 
@@ -65,7 +82,10 @@ class IPPO(nn.Module):
         """
         values = []
         for i in range(self.n_agents): 
-            values.append(self.critic[i](x[:,i]))
+            if self.shared_critic:
+                values.append(self.critic(x[:,i]))
+            else:
+                values.append(self.critic[i](x[:,i]))
         values = torch.stack(values, dim=1).squeeze(-1)
         return values
 
@@ -84,7 +104,10 @@ class IPPO(nn.Module):
         logprobs = []
         entropies = []
         for i in range(self.n_agents):
-            logits = self.actor[i](x[:,i])
+            if self.shared_actor:
+                logits = self.actor(x[:,i])
+            else:
+                logits = self.actor[i](x[:,i])
             probs = Categorical(logits=logits)
             if actions is None:
                 action = probs.sample()

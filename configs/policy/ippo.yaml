@@ -2,7 +2,7 @@ _target_: src.policies.ippo.IPPO
 params:
   n_layers: 2
   hidden_dim: 128
-  learning_rate: 0.001
+  learning_rate: 0.0003
   gamma: 0.99
   gae_lambda: 0.95
   gae: False
@@ -19,3 +19,5 @@ params:
   rollout_threads: 64
   env_steps: 25
   activation: tanh
+  shared_actor: False
+  shared_critic: False

@@ -1,6 +1,6 @@
 _target_: src.runner.PGRunner
 params:
-  total_timesteps: 500000
+  total_timesteps: 20_000_000
   rollout_threads: 64
   env_steps: 25
   lr_decay: True
