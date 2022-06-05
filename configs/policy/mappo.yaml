@@ -20,3 +20,4 @@ params:
   env_steps: 25
   activation: tanh
   shared_critic: False
+  shared_actor: True

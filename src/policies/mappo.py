@@ -40,6 +40,7 @@ class MAPPO(nn.Module):
         self.target_kl = params.target_kl
         self.update_epochs = params.update_epochs
         self.shared_critic = params.shared_critic
+        self.shared_actor = params.shared_actor
 
         if self.shared_critic:
             self.critic = MLP(
@@ -56,12 +57,20 @@ class MAPPO(nn.Module):
                 std=1.0,
                 activation=self.activation) for _ in range(self.n_agents)])
 
-        self.actor = MLP(
-            np.array(self.obs_shape).prod(), 
-            [self.hidden_dim]*self.n_layers, 
-            self.action_dim, 
-            std=0.01,
-            activation=self.activation)
+        if self.shared_actor:
+            self.actor = MLP(
+                np.array(self.obs_shape).prod(), 
+                [self.hidden_dim]*self.n_layers, 
+                self.action_dim, 
+                std=0.01,
+                activation=self.activation)
+        else:
+           self.actor = nn.ModuleList([MLP(
+                np.array(self.obs_shape).prod(), 
+                [self.hidden_dim]*self.n_layers, 
+                self.action_dim, 
+                std=0.01,
+                activation=self.activation) for _ in range(self.n_agents)])
         
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5)
 
@@ -97,7 +106,10 @@ class MAPPO(nn.Module):
         logprobs = []
         entropies = []
         for i in range(self.n_agents):
-            logits = self.actor(x[:,i])
+            if self.shared_actor:
+                logits = self.actor(x[:,i])
+            else:
+                logits = self.actor[i](x[:,i])
             probs = Categorical(logits=logits)
             if actions is None:
                 action = probs.sample()

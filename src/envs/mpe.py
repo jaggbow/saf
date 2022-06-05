@@ -14,8 +14,8 @@ ENVS = {
     'simple_adversary': simple_adversary_v2,
     'simple_crypto': simple_crypto_v2,
     'simple_push': simple_push_v2,
-    'simple_speaker_listener': simple_speaker_listener_v3,
     'simple_reference': simple_reference_v2,
     'simple_tag': simple_tag_v2,
+    'simple_speaker_listener': simple_speaker_listener_v3,
     'simple_world_comm': simple_world_comm_v2
 }

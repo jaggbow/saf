@@ -19,6 +19,8 @@ def make_env(env_config):
     
     env_class = get_env(env_config.name, env_config.family)
     env = env_class.parallel_env(**env_config.params)
+    env = ss.pad_observations_v0(env)
+    env = ss.pad_action_space_v0(env)
     env = ss.pettingzoo_env_to_vec_env_v1(env)
     env = ss.concat_vec_envs_v1(env, env_config.rollout_threads, num_cpus=1, base_class='gym')
 
