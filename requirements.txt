@@ -1,0 +1,10 @@
+ale_py==0.7.5
+comet_ml==3.24.2
+gym==0.24.0
+hydra-core==1.2.0
+numpy==1.21.2
+omegaconf==2.2.2
+PettingZoo==1.18.1
+SuperSuit==3.4.0
+torch==1.11.0
+tqdm==4.62.3
