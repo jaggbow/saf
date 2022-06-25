@@ -1,5 +1,8 @@
 import numpy as np
+import os
 import time
+from datetime import datetime
+from pathlib import Path
 
 from tqdm import tqdm
 import comet_ml
@@ -18,6 +21,9 @@ class PGRunner:
         self.n_agents = params.n_agents
         self.eval_episodes = params.eval_episodes
         self.use_comet = True if params.comet else False
+        self.checkpoint_dir = params.checkpoint_dir
+        self.save_dir = params.save_dir
+        
         if self.use_comet:
             self.exp = comet_ml.Experiment(project_name=params.comet.project_name)
             self.exp.set_name(f"{policy.__class__.__name__}_{int(time.time())}")
@@ -26,7 +32,10 @@ class PGRunner:
         self.buffer = buffer
         self.policy = policy
         self.device = device
-    
+
+        if self.checkpoint_dir:
+            self.load_checkpoints(self.checkpoint_dir)
+            
     def env_reset(self):
         '''
         Resets the environment.
@@ -65,6 +74,10 @@ class PGRunner:
         next_done = torch.zeros((self.rollout_threads, self.n_agents)).to(self.device)
 
         num_updates = self.total_timesteps // self.batch_size
+        best_return = -1e9
+
+        today, hour = datetime.now().strftime('%Y_%m_%d %H_%M_%S').split()
+        checkpoint_path = Path(self.save_dir)/Path(today)/Path(hour)
         
         for update in range(1, num_updates + 1):
             if self.lr_decay:
@@ -97,6 +110,9 @@ class PGRunner:
             print(f"global_step={global_step}, episodic_return={total_rewards}")
             if self.use_comet:
                 self.exp.log_metric("episodic_return", total_rewards, global_step)
+            
+            if total_rewards > best_return:
+                self.save_checkpoints(checkpoint_path)
 
             with torch.no_grad():
                 
@@ -134,4 +150,10 @@ class PGRunner:
         std_rewards = np.std(agg_rewards)
 
         return mean_rewards, std_rewards
+
+    def load_checkpoints(self, checkpoint_dir):
+        self.policy.load_checkpoints(checkpoint_dir)
+
+    def save_checkpoints(self, checkpoint_dir):
+        self.policy.save_checkpoints(checkpoint_dir)
             

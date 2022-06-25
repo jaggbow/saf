@@ -1,3 +1,4 @@
+import os
 import numpy as np
 
 import torch
@@ -262,3 +263,11 @@ class MAPPO(nn.Module):
             'explained_var': explained_var
         }
         return metrics
+    
+    def save_checkpoints(self, checkpoint_dir):
+        torch.save(self.actor.state_dict(), os.path.join(checkpoint_dir, 'actor.pth'))
+        torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
+    
+    def load_checkpoints(self, checkpoint_dir):
+        self.actor.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor.pth'), map_location=lambda storage, loc: storage))
+        self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))
