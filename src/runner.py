@@ -20,6 +20,8 @@ class PGRunner:
         self.lr_decay = params.lr_decay
         self.n_agents = params.n_agents
         self.eval_episodes = params.eval_episodes
+        self.observation_space = env.observation_space
+        self.action_space = env.action_space
         self.use_comet = True if params.comet else False
         self.checkpoint_dir = params.checkpoint_dir
         self.save_dir = Path(expandvars(expanduser(str(params.save_dir)))).resolve()
@@ -53,9 +55,16 @@ class PGRunner:
         '''
         Does a step in the defined environment using action.
         Args:
-            action: [rollout_threads, n_agents]
+            action: [rollout_threads, n_agents] for Discrete type and [rollout_threads, n_agents, action_dim] for Box type
         '''
-        action_ = action.transpose(1,0).reshape(-1).cpu().numpy()
+        if self.action_space.__class__.__name__ == 'Box':
+            action_ = action.reshape(-1, action.shape[-1]).cpu().numpy()
+            action_ = np.clip(action_, self.action_space.low, self.action_space.high)
+        elif self.action_space.__class__.__name__ == 'Discrete':
+            action_ = action.transpose(1,0).reshape(-1).cpu().numpy()
+        else:
+            NotImplementedError
+        
         obs, reward, done, info = self.env.step(action_)
         
         obs = torch.Tensor(obs).reshape((self.n_agents, -1)+obs.shape[1:]).to(self.device) # [n_agents, rollout_threads, obs_shape]
@@ -80,7 +89,6 @@ class PGRunner:
         
         for update in range(1, num_updates + 1):
             if self.lr_decay:
-    
                 self.policy.update_lr(update, num_updates)
 
             total_rewards = 0

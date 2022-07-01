@@ -36,13 +36,14 @@ def main(cfg: DictConfig):
     device = torch.device("cuda" if torch.cuda.is_available() and cfg.cuda else "cpu")
 
     envs = make_env(cfg.env)
+
     policy = hydra.utils.instantiate(
         cfg.policy, 
         observation_space=envs.observation_space, 
         action_space=envs.action_space, 
         params=cfg.policy.params)
     policy = policy.to(device)
-    buffer = ReplayBuffer(envs.observation_space, cfg.buffer, device)
+    buffer = ReplayBuffer(envs.observation_space, envs.action_space, cfg.buffer, device)
     runner = hydra.utils.instantiate(
         cfg.runner,
         env=envs, 

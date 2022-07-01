@@ -19,6 +19,7 @@ params:
   rollout_threads: 64
   env_steps: 25
   activation: tanh
+  continuous_action: False
   shared_actor: False
   shared_critic: False
-  continuous_action: False
+  

@@ -1,3 +1,4 @@
 n_agents: 3
 rollout_threads: 64
 env_steps: 25
+continuous_action: True

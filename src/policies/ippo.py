@@ -19,7 +19,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 class IPPO(nn.Module):
     def __init__(self, observation_space, action_space, params):
         super(IPPO, self).__init__()
-        
+
         self.obs_shape = get_obs_shape(observation_space)
         self.action_shape = get_act_shape(action_space)
         self.n_layers = params.n_layers
@@ -78,13 +78,14 @@ class IPPO(nn.Module):
                     activation=self.activation)
         else:
             if self.continuous_action:
+                
                 self.actor_mean = nn.ModuleList([MLP(
                 np.array(self.obs_shape).prod(), 
                 [self.hidden_dim]*self.n_layers, 
                 np.array(self.action_shape).prod(), 
                 std=0.01,
                 activation=self.activation) for _ in range(self.n_agents)])
-                self.actor_logstd = nn.ModuleList([
+                self.actor_logstd = nn.ParameterList([
                     nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod())) for _ in range(self.n_agents)])
             else:
                 self.actor = nn.ModuleList([MLP(
@@ -227,7 +228,10 @@ class IPPO(nn.Module):
         # flatten the batch
         b_obs = buffer.obs.reshape((-1, self.n_agents) + self.obs_shape)
         b_logprobs = buffer.logprobs.reshape(-1, self.n_agents)
-        b_actions = buffer.actions.reshape((-1, self.n_agents))
+        if self.continuous_action:
+            b_actions = buffer.actions.reshape((-1, self.n_agents)+self.action_shape)
+        else:
+            b_actions = buffer.actions.reshape((-1, self.n_agents))
         b_advantages = advantages.reshape(-1, self.n_agents)
         b_returns = returns.reshape(-1, self.n_agents)
         b_values = buffer.values.reshape(-1, self.n_agents)
@@ -241,8 +245,11 @@ class IPPO(nn.Module):
             for start in range(0, self.batch_size, self.minibatch_size):
                 end = start + self.minibatch_size
                 mb_inds = b_inds[start:end]
-
-                _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                
+                if self.continuous_action:
+                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
+                else:
+                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
                 
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
@@ -305,9 +312,19 @@ class IPPO(nn.Module):
         return metrics
 
     def save_checkpoints(self, checkpoint_dir):
-        torch.save(self.actor.state_dict(), os.path.join(checkpoint_dir, 'actor.pth'))
-        torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
+        if self.continuous_action: 
+            torch.save(self.actor_mean.state_dict(), os.path.join(checkpoint_dir, 'actor_mean.pth'))
+            torch.save(self.actor_logstd.state_dict(), os.path.join(checkpoint_dir, 'actor_logstd.pth'))
+            torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
+        else:
+            torch.save(self.actor.state_dict(), os.path.join(checkpoint_dir, 'actor.pth'))
+            torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
     
     def load_checkpoints(self, checkpoint_dir):
-        self.actor.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor.pth'), map_location=lambda storage, loc: storage))
-        self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))
+        if self.continuous_action: 
+            self.actor_mean.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor_mean.pth'), map_location=lambda storage, loc: storage))
+            self.actor_logstd.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor_logstd.pth'), map_location=lambda storage, loc: storage))
+            self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))
+        else:
+            self.actor.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor.pth'), map_location=lambda storage, loc: storage))
+            self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))
