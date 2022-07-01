@@ -1,5 +1,5 @@
 import numpy as np
-import os
+from os.path import expanduser, expandvars
 import time
 from datetime import datetime
 from pathlib import Path
@@ -22,7 +22,8 @@ class PGRunner:
         self.eval_episodes = params.eval_episodes
         self.use_comet = True if params.comet else False
         self.checkpoint_dir = params.checkpoint_dir
-        self.save_dir = params.save_dir
+        self.save_dir = Path(expandvars(expanduser(str(params.save_dir)))).resolve()
+        self.save_dir.mkdir(parents=True, exist_ok=True)
         
         if self.use_comet:
             self.exp = comet_ml.Experiment(project_name=params.comet.project_name)
@@ -34,6 +35,7 @@ class PGRunner:
         self.device = device
 
         if self.checkpoint_dir:
+            print("Resuming training from", self.checkpoint_dir)
             self.load_checkpoints(self.checkpoint_dir)
             
     def env_reset(self):
@@ -75,9 +77,6 @@ class PGRunner:
 
         num_updates = self.total_timesteps // self.batch_size
         best_return = -1e9
-
-        today, hour = datetime.now().strftime('%Y_%m_%d %H_%M_%S').split()
-        checkpoint_path = Path(self.save_dir)/Path(today)/Path(hour)
         
         for update in range(1, num_updates + 1):
             if self.lr_decay:
@@ -112,7 +111,8 @@ class PGRunner:
                 self.exp.log_metric("episodic_return", total_rewards, global_step)
             
             if total_rewards > best_return:
-                self.save_checkpoints(checkpoint_path)
+                self.save_checkpoints(self.save_dir)
+                best_return = total_rewards
 
             with torch.no_grad():
                 

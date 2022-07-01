@@ -6,5 +6,7 @@ params:
   lr_decay: True
   n_agents: 3
   eval_episodes: 100
+  checkpoint_dir: null
+  save_dir: $SCRATCH/saf/$SLURM_JOB_ID/
   comet:
     project_name: corl
