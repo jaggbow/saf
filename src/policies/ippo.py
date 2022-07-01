@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from torch import nn, optim
 from torch.distributions.categorical import Categorical
+from torch.distributions.normal import Normal
 
 from src.architectures.mlp import MLP
 from src.utils import *
@@ -20,7 +21,7 @@ class IPPO(nn.Module):
         super(IPPO, self).__init__()
         
         self.obs_shape = get_obs_shape(observation_space)
-        self.action_dim = action_space.n
+        self.action_shape = get_act_shape(action_space)
         self.n_layers = params.n_layers
         self.hidden_dim = params.hidden_dim
         self.activation = params.activation
@@ -31,6 +32,7 @@ class IPPO(nn.Module):
         self.n_agents = params.n_agents
         self.shared_actor = params.shared_actor
         self.shared_critic = params.shared_critic
+        self.continuous_action = params.continuous_action
 
         self.batch_size = params.rollout_threads * params.env_steps
         self.minibatch_size = self.batch_size // params.num_minibatches
@@ -59,19 +61,38 @@ class IPPO(nn.Module):
                 activation=self.activation) for _ in range(self.n_agents)])
         
         if self.shared_actor:
-            self.actor = MLP(
+            if self.continuous_action:
+                self.actor_mean = MLP(
                 np.array(self.obs_shape).prod(), 
                 [self.hidden_dim]*self.n_layers, 
-                self.action_dim, 
+                np.array(self.action_shape).prod(), 
                 std=0.01,
                 activation=self.activation)
+                self.actor_logstd = nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod()))
+            else:
+                self.actor = MLP(
+                    np.array(self.obs_shape).prod(), 
+                    [self.hidden_dim]*self.n_layers, 
+                    np.array(self.action_shape).prod(), 
+                    std=0.01,
+                    activation=self.activation)
         else:
-            self.actor = nn.ModuleList([MLP(
+            if self.continuous_action:
+                self.actor_mean = nn.ModuleList([MLP(
                 np.array(self.obs_shape).prod(), 
                 [self.hidden_dim]*self.n_layers, 
-                self.action_dim, 
+                np.array(self.action_shape).prod(), 
                 std=0.01,
                 activation=self.activation) for _ in range(self.n_agents)])
+                self.actor_logstd = nn.ModuleList([
+                    nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod())) for _ in range(self.n_agents)])
+            else:
+                self.actor = nn.ModuleList([MLP(
+                    np.array(self.obs_shape).prod(), 
+                    [self.hidden_dim]*self.n_layers, 
+                    np.array(self.action_shape).prod(), 
+                    std=0.01,
+                    activation=self.activation) for _ in range(self.n_agents)])
         
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5)
 
@@ -107,16 +128,36 @@ class IPPO(nn.Module):
         entropies = []
         for i in range(self.n_agents):
             if self.shared_actor:
-                logits = self.actor(x[:,i])
+                if self.continuous_action:
+                    action_mean = self.actor_mean(x[:,i])
+                    action_logstd = self.actor_logstd.expand_as(action_mean)
+                    action_std = torch.exp(action_logstd)
+                else:
+                    logits = self.actor(x[:,i])
             else:
-                logits = self.actor[i](x[:,i])
-            probs = Categorical(logits=logits)
+                if self.continuous_action:
+                    action_mean = self.actor_mean[i](x[:,i])
+                    action_logstd = self.actor_logstd[i].expand_as(action_mean)
+                    action_std = torch.exp(action_logstd)
+                else:
+                    logits = self.actor[i](x[:,i])
+            
+            if self.continuous_action:
+                probs = Normal(action_mean, action_std)
+            else:
+                probs = Categorical(logits=logits)
+            
             if actions is None:
                 action = probs.sample()
             else:
                 action = actions[:,i]
-            logprob = probs.log_prob(action)
-            entropy = probs.entropy()
+            
+            if self.continuous_action:
+                logprob = probs.log_prob(action).sum(1)
+                entropy = probs.entropy().sum(1)
+            else:
+                logprob = probs.log_prob(action)
+                entropy = probs.entropy()
 
             out_actions.append(action)
             logprobs.append(logprob)
