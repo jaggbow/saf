@@ -60,7 +60,6 @@ class PGRunner:
         '''
         if self.action_space.__class__.__name__ == 'Box':
             action_ = action.reshape(-1, action.shape[-1]).cpu().numpy()
-            action_ = np.clip(action_, self.action_space.low, self.action_space.high)
         elif self.action_space.__class__.__name__ == 'Discrete':
             action_ = action.transpose(1,0).reshape(-1).cpu().numpy()
         else:
