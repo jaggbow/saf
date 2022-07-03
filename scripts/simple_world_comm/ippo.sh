@@ -16,8 +16,8 @@ python run.py \
 policy=ippo \
 env=simple_world_comm \
 runner.params.lr_decay=False \
-policy.params.n_agents=6 \
-runner.params.n_agents=6 \
-buffer.n_agents=6 \
+n_agents=6 \
+continuous_action=False \
+env_steps=25 \
 runner.params.comet.project_name=simple_world_comm \
 runner.params.total_timesteps=2000000
