@@ -3,7 +3,7 @@ family: sisl
 rollout_threads: 64
 continuous_action: True
 params: 
-  n_pursuers: ${N_agents}
+  n_pursuers: ${n_agents}
   n_evaders: 5
   n_poison: 10 
   n_coop: 2 
