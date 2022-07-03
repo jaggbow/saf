@@ -8,3 +8,4 @@ torch_deterministic: True
 cuda: True
 rollout_threads: 64
 n_agents: 3
+continuous_actions: False

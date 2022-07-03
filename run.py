@@ -1,4 +1,5 @@
 import random
+import os
 
 import comet_ml
 import supersuit as ss
@@ -56,7 +57,7 @@ def main(cfg: DictConfig):
     mean_rewards, std_rewards = runner.evaluate()
     print(f"Eval Rewards: {mean_rewards} +- {std_rewards}")
     envs.close()
+
 if __name__ == "__main__":
-    
     main()
     

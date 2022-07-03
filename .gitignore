@@ -137,5 +137,3 @@ dmypy.json
 # misc
 main.py
 *.json
-
-src/policies/ippo_continuous.py

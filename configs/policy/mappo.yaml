@@ -21,3 +21,4 @@ params:
   activation: tanh
   shared_critic: False
   shared_actor: True
+  continuous_action: False

@@ -68,7 +68,7 @@ class IPPO(nn.Module):
                 np.array(self.action_shape).prod(), 
                 std=0.01,
                 activation=self.activation)
-                self.actor_logstd = nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod()))
+                self.actor_logstd = nn.ParameterList([nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod()))])
             else:
                 self.actor = MLP(
                     np.array(self.obs_shape).prod(), 
@@ -130,7 +130,7 @@ class IPPO(nn.Module):
         for i in range(self.n_agents):
             if self.shared_actor:
                 if self.continuous_action:
-                    action_mean = self.actor_mean(x[:,i])
+                    action_mean = self.actor_mean[0](x[:,i])
                     action_logstd = self.actor_logstd.expand_as(action_mean)
                     action_std = torch.exp(action_logstd)
                 else:
@@ -314,8 +314,12 @@ class IPPO(nn.Module):
     def save_checkpoints(self, checkpoint_dir):
         if self.continuous_action: 
             torch.save(self.actor_mean.state_dict(), os.path.join(checkpoint_dir, 'actor_mean.pth'))
-            torch.save(self.actor_logstd.state_dict(), os.path.join(checkpoint_dir, 'actor_logstd.pth'))
             torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
+            if self.shared_actor:
+                state = dict(actor_logstd=self.actor_logstd)
+                torch.save(state, os.path.join(checkpoint_dir, 'actor_logstd.pth'))
+            else:
+                torch.save(self.actor_logstd.state_dict(), os.path.join(checkpoint_dir, 'actor_logstd.pth'))
         else:
             torch.save(self.actor.state_dict(), os.path.join(checkpoint_dir, 'actor.pth'))
             torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
@@ -323,8 +327,11 @@ class IPPO(nn.Module):
     def load_checkpoints(self, checkpoint_dir):
         if self.continuous_action: 
             self.actor_mean.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor_mean.pth'), map_location=lambda storage, loc: storage))
-            self.actor_logstd.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor_logstd.pth'), map_location=lambda storage, loc: storage))
             self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))
+            if self.shared_actor:
+                self.actor_logstd = torch.load(os.path.join(checkpoint_dir, 'actor_logstd.pth'))['actor_logstd']
+            else:
+                self.actor_logstd.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor_logstd.pth'), map_location=lambda storage, loc: storage))
         else:
             self.actor.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor.pth'), map_location=lambda storage, loc: storage))
             self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))

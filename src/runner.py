@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from os.path import expanduser, expandvars
 import time
 from datetime import datetime
@@ -29,7 +30,7 @@ class PGRunner:
         
         if self.use_comet:
             self.exp = comet_ml.Experiment(project_name=params.comet.project_name)
-            self.exp.set_name(f"{policy.__class__.__name__}_{int(time.time())}")
+            self.exp.set_name(f"{policy.__class__.__name__}_{os.environ['SLURM_JOB_ID']}")
 
         self.env = env
         self.buffer = buffer

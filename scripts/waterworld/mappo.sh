@@ -1,19 +1,19 @@
 #!/bin/bash
 
-#SBATCH --job-name=ippo_waterworld
+#SBATCH --job-name=mappo_waterworld
 #SBATCH --partition=long                        
 #SBATCH --cpus-per-task=6
 #SBATCH --gres=gpu:rtx8000:1
 #SBATCH --mem=60G                                     
 #SBATCH --time=16:00:00
-#SBATCH -o /network/scratch/o/oussama.boussif/slurms/ippo_waterworld-slurm-%j.out  
+#SBATCH -o /network/scratch/o/oussama.boussif/slurms/mappo_waterworld-slurm-%j.out  
 
 # 1. Load the required modules
 module --quiet load anaconda/3
 conda activate marl
 
 python run.py \
-policy=ippo \
+policy=mappo \
 env=waterworld \
 runner.params.lr_decay=False \
 runner.params.env_steps=500 \
