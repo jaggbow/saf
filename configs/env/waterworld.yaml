@@ -1,8 +1,9 @@
 name: waterworld
 family: sisl
 rollout_threads: 64
+continuous_action: True
 params: 
-  n_pursuers: 5
+  n_pursuers: ${N_agents}
   n_evaders: 5
   n_poison: 10 
   n_coop: 2 
@@ -20,4 +21,4 @@ params:
   thrust_penalty: -0.5
   local_ratio: 1.0 
   speed_features: True 
-  max_cycles: 500
+  max_cycles: ${env_steps}

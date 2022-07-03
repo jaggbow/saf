@@ -1,10 +1,10 @@
 _target_: src.runner.PGRunner
 params:
   total_timesteps: 20_000_000
-  rollout_threads: 64
-  env_steps: 25
+  rollout_threads: ${rollout_threads}
+  env_steps: ${env_steps}
   lr_decay: True
-  n_agents: 3
+  n_agents: ${n_agents}
   eval_episodes: 100
   checkpoint_dir: null
   save_dir: $SCRATCH/saf/$SLURM_JOB_ID/
