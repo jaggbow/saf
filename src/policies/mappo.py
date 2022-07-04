@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from torch import nn, optim
 from torch.distributions.categorical import Categorical
+from torch.distributions.normal import Normal
 
 from src.architectures.mlp import MLP
 from src.utils import *
@@ -20,7 +21,7 @@ class MAPPO(nn.Module):
         super(MAPPO, self).__init__()
         
         self.obs_shape = get_obs_shape(observation_space)
-        self.action_dim = action_space.n
+        self.action_shape = get_act_shape(action_space)
         self.n_layers = params.n_layers
         self.hidden_dim = params.hidden_dim
         self.activation = params.activation
@@ -42,6 +43,7 @@ class MAPPO(nn.Module):
         self.update_epochs = params.update_epochs
         self.shared_critic = params.shared_critic
         self.shared_actor = params.shared_actor
+        self.continuous_action = params.continuous_action
 
         if self.shared_critic:
             self.critic = MLP(
@@ -59,19 +61,41 @@ class MAPPO(nn.Module):
                 activation=self.activation) for _ in range(self.n_agents)])
 
         if self.shared_actor:
-            self.actor = MLP(
+            if self.continuous_action:
+                self.actor_mean = MLP(
                 np.array(self.obs_shape).prod(), 
                 [self.hidden_dim]*self.n_layers, 
-                self.action_dim, 
+                np.array(self.action_shape).prod(), 
                 std=0.01,
                 activation=self.activation)
+                
+                self.actor_logstd = nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod()))
+            else:
+                self.actor = MLP(
+                    np.array(self.obs_shape).prod(), 
+                    [self.hidden_dim]*self.n_layers, 
+                    np.array(self.action_shape).prod(), 
+                    std=0.01,
+                    activation=self.activation)
         else:
-           self.actor = nn.ModuleList([MLP(
+            if self.continuous_action:
+                
+                self.actor_mean = nn.ModuleList([MLP(
                 np.array(self.obs_shape).prod(), 
                 [self.hidden_dim]*self.n_layers, 
-                self.action_dim, 
+                np.array(self.action_shape).prod(), 
                 std=0.01,
                 activation=self.activation) for _ in range(self.n_agents)])
+                
+                self.actor_logstd = nn.ParameterList([
+                    nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod())) for _ in range(self.n_agents)])
+            else:
+                self.actor = nn.ModuleList([MLP(
+                    np.array(self.obs_shape).prod(), 
+                    [self.hidden_dim]*self.n_layers, 
+                    np.array(self.action_shape).prod(), 
+                    std=0.01,
+                    activation=self.activation) for _ in range(self.n_agents)])
         
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5)
 
@@ -108,16 +132,36 @@ class MAPPO(nn.Module):
         entropies = []
         for i in range(self.n_agents):
             if self.shared_actor:
-                logits = self.actor(x[:,i])
+                if self.continuous_action:
+                    action_mean = self.actor_mean(x[:,i])
+                    action_logstd = self.actor_logstd.expand_as(action_mean)
+                    action_std = torch.exp(action_logstd)
+                else:
+                    logits = self.actor(x[:,i])
             else:
-                logits = self.actor[i](x[:,i])
-            probs = Categorical(logits=logits)
+                if self.continuous_action:
+                    action_mean = self.actor_mean[i](x[:,i])
+                    action_logstd = self.actor_logstd[i].expand_as(action_mean)
+                    action_std = torch.exp(action_logstd)
+                else:
+                    logits = self.actor[i](x[:,i])
+            
+            if self.continuous_action:
+                probs = Normal(action_mean, action_std)
+            else:
+                probs = Categorical(logits=logits)
+            
             if actions is None:
                 action = probs.sample()
             else:
                 action = actions[:,i]
-            logprob = probs.log_prob(action)
-            entropy = probs.entropy()
+            
+            if self.continuous_action:
+                logprob = probs.log_prob(action).sum(1)
+                entropy = probs.entropy().sum(1)
+            else:
+                logprob = probs.log_prob(action)
+                entropy = probs.entropy()
 
             out_actions.append(action)
             logprobs.append(logprob)
@@ -187,7 +231,10 @@ class MAPPO(nn.Module):
         # flatten the batch
         b_obs = buffer.obs.reshape((-1, self.n_agents) + self.obs_shape)
         b_logprobs = buffer.logprobs.reshape(-1, self.n_agents)
-        b_actions = buffer.actions.reshape((-1, self.n_agents))
+        if self.continuous_action:
+            b_actions = buffer.actions.reshape((-1, self.n_agents)+self.action_shape)
+        else:
+            b_actions = buffer.actions.reshape((-1, self.n_agents))
         b_advantages = advantages.reshape(-1, self.n_agents)
         b_returns = returns.reshape(-1, self.n_agents)
         b_values = buffer.values.reshape(-1, self.n_agents)
@@ -202,7 +249,10 @@ class MAPPO(nn.Module):
                 end = start + self.minibatch_size
                 mb_inds = b_inds[start:end]
 
-                _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                if self.continuous_action:
+                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
+                else:
+                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
                 
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
@@ -265,9 +315,26 @@ class MAPPO(nn.Module):
         return metrics
     
     def save_checkpoints(self, checkpoint_dir):
-        torch.save(self.actor.state_dict(), os.path.join(checkpoint_dir, 'actor.pth'))
-        torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
+        if self.continuous_action: 
+            torch.save(self.actor_mean.state_dict(), os.path.join(checkpoint_dir, 'actor_mean.pth'))
+            torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
+            if self.shared_actor:
+                state = dict(actor_logstd=self.actor_logstd)
+                torch.save(state, os.path.join(checkpoint_dir, 'actor_logstd.pth'))
+            else:
+                torch.save(self.actor_logstd.state_dict(), os.path.join(checkpoint_dir, 'actor_logstd.pth'))
+        else:
+            torch.save(self.actor.state_dict(), os.path.join(checkpoint_dir, 'actor.pth'))
+            torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
     
     def load_checkpoints(self, checkpoint_dir):
-        self.actor.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor.pth'), map_location=lambda storage, loc: storage))
-        self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))
+        if self.continuous_action: 
+            self.actor_mean.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor_mean.pth'), map_location=lambda storage, loc: storage))
+            self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))
+            if self.shared_actor:
+                self.actor_logstd = torch.load(os.path.join(checkpoint_dir, 'actor_logstd.pth'))['actor_logstd']
+            else:
+                self.actor_logstd.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor_logstd.pth'), map_location=lambda storage, loc: storage))
+        else:
+            self.actor.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor.pth'), map_location=lambda storage, loc: storage))
+            self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))

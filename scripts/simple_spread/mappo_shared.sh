@@ -12,4 +12,11 @@
 module --quiet load anaconda/3
 conda activate marl
 
-python run.py policy=mappo env=simple_spread runner.params.lr_decay=False policy.params.shared_critic=True
+python run.py \
+policy=mappo \
+env=simple_spread \
+runner.params.lr_decay=False \
+n_agents=3 \
+continuous_action=False \
+env_steps=25 \
+policy.params.shared_critic=True

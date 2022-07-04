@@ -1,5 +1,6 @@
 import numpy as np
 import os
+from os.path import expanduser, expandvars
 import time
 from datetime import datetime
 from pathlib import Path
@@ -20,13 +21,16 @@ class PGRunner:
         self.lr_decay = params.lr_decay
         self.n_agents = params.n_agents
         self.eval_episodes = params.eval_episodes
+        self.observation_space = env.observation_space
+        self.action_space = env.action_space
         self.use_comet = True if params.comet else False
         self.checkpoint_dir = params.checkpoint_dir
-        self.save_dir = params.save_dir
+        self.save_dir = Path(expandvars(expanduser(str(params.save_dir)))).resolve()
+        self.save_dir.mkdir(parents=True, exist_ok=True)
         
         if self.use_comet:
             self.exp = comet_ml.Experiment(project_name=params.comet.project_name)
-            self.exp.set_name(f"{policy.__class__.__name__}_{int(time.time())}")
+            self.exp.set_name(f"{policy.__class__.__name__}_{os.environ['SLURM_JOB_ID']}")
 
         self.env = env
         self.buffer = buffer
@@ -34,6 +38,7 @@ class PGRunner:
         self.device = device
 
         if self.checkpoint_dir:
+            print("Resuming training from", self.checkpoint_dir)
             self.load_checkpoints(self.checkpoint_dir)
             
     def env_reset(self):
@@ -51,9 +56,15 @@ class PGRunner:
         '''
         Does a step in the defined environment using action.
         Args:
-            action: [rollout_threads, n_agents]
+            action: [rollout_threads, n_agents] for Discrete type and [rollout_threads, n_agents, action_dim] for Box type
         '''
-        action_ = action.transpose(1,0).reshape(-1).cpu().numpy()
+        if self.action_space.__class__.__name__ == 'Box':
+            action_ = action.reshape(-1, action.shape[-1]).cpu().numpy()
+        elif self.action_space.__class__.__name__ == 'Discrete':
+            action_ = action.transpose(1,0).reshape(-1).cpu().numpy()
+        else:
+            NotImplementedError
+        
         obs, reward, done, info = self.env.step(action_)
         
         obs = torch.Tensor(obs).reshape((self.n_agents, -1)+obs.shape[1:]).to(self.device) # [n_agents, rollout_threads, obs_shape]
@@ -75,13 +86,9 @@ class PGRunner:
 
         num_updates = self.total_timesteps // self.batch_size
         best_return = -1e9
-
-        today, hour = datetime.now().strftime('%Y_%m_%d %H_%M_%S').split()
-        checkpoint_path = Path(self.save_dir)/Path(today)/Path(hour)
         
         for update in range(1, num_updates + 1):
             if self.lr_decay:
-    
                 self.policy.update_lr(update, num_updates)
 
             total_rewards = 0
@@ -112,7 +119,8 @@ class PGRunner:
                 self.exp.log_metric("episodic_return", total_rewards, global_step)
             
             if total_rewards > best_return:
-                self.save_checkpoints(checkpoint_path)
+                self.save_checkpoints(self.save_dir)
+                best_return = total_rewards
 
             with torch.no_grad():
                 

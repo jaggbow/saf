@@ -1,11 +1,12 @@
 name: simple_world_comm
 family: mpe
-rollout_threads: 64
+rollout_threads: ${rollout_threads}
+continuous_action: ${continuous_action}
 params: 
   num_good: 2
   num_adversaries: 4
   num_obstacles: 1
   num_food: 2
-  max_cycles: 25
+  max_cycles: ${env_steps}
   num_forests: 2
-  continuous_actions: False
+  continuous_actions: ${env.continuous_action}

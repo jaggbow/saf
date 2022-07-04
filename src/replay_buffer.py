@@ -5,16 +5,21 @@ import torch
 from src.utils import *
 
 class ReplayBuffer:
-    def __init__(self, observation_space, params, device):
+    def __init__(self, observation_space, action_space, params, device):
         
         self.n_agents = params.n_agents
         self.rollout_threads = params.rollout_threads
         self.env_steps = params.env_steps
+        self.continuous_action = params.continuous_action
         self.obs_shape = get_obs_shape(observation_space)
+        self.action_shape = get_obs_shape(action_space)
         self.device = device
 
         self.obs = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)+self.obs_shape).float().to(device)
-        self.actions = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)).float().to(device)
+        if self.continuous_action:
+            self.actions = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)+self.action_shape).float().to(device)
+        else:
+            self.actions = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)).float().to(device)
         self.logprobs = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)).float().to(device)
         self.rewards = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)).float().to(device)
         self.values = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)).float().to(device)

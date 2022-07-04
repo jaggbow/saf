@@ -16,8 +16,8 @@ python run.py \
 policy=mappo \
 env=simple_reference \
 runner.params.lr_decay=False \
-policy.params.n_agents=2 \
-runner.params.n_agents=2 \
-buffer.n_agents=2 \
+n_agents=2 \
+continuous_action=False \
+env_steps=25 \
 runner.params.comet.project_name=simple_reference \
 runner.params.total_timesteps=3000000

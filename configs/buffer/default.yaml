@@ -1,3 +1,4 @@
-n_agents: 3
-rollout_threads: 64
-env_steps: 25
+n_agents: ${n_agents}
+rollout_threads: ${rollout_threads}
+env_steps: ${env_steps}
+continuous_action: ${continuous_action}

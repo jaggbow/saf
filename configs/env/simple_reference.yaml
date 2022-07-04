@@ -1,7 +1,8 @@
 name: simple_reference
 family: mpe
-rollout_threads: 64
+rollout_threads: ${rollout_threads}
+continuous_action: ${continuous_action}
 params: 
   local_ratio: 0.5
-  max_cycles: 25
-  continuous_actions: False
+  max_cycles: ${env_steps}
+  continuous_actions: ${env.continuous_action}
