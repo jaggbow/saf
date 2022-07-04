@@ -5,7 +5,7 @@ params:
   env_steps: ${env_steps}
   lr_decay: True
   n_agents: ${n_agents}
-  eval_episodes: 100
+  eval_episodes: 32
   checkpoint_dir: null
   save_dir: $SCRATCH/saf/$SLURM_JOB_ID/
   comet:

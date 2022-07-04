@@ -56,8 +56,9 @@ def main(cfg: DictConfig):
         buffer=buffer, 
         params=cfg.runner.params, 
         device=device)
-    runner.run()
-
+    
+    if not cfg.test_mode:
+        runner.run()
     mean_rewards, std_rewards = runner.evaluate()
     print(f"Eval Rewards: {mean_rewards} +- {std_rewards}")
     envs.close()
