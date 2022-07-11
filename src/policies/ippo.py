@@ -17,10 +17,11 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 
 class IPPO(nn.Module):
-    def __init__(self, observation_space, action_space, params):
+    def __init__(self, observation_space, action_space, state_space, params):
         super(IPPO, self).__init__()
         # https://ppo-details.cleanrl.dev//2021/11/05/ppo-implementation-details/
         self.obs_shape = get_obs_shape(observation_space)
+        self.state_shape = get_state_shape(state_space)
         self.action_shape = get_act_shape(action_space)
         self.n_layers = params.n_layers
         self.hidden_dim = params.hidden_dim
@@ -97,10 +98,11 @@ class IPPO(nn.Module):
         
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5)
 
-    def get_value(self, x):
+    def get_value(self, x, state=None):
         """
         Args:
             x: [batch_size, n_agents, obs_shape]
+            state: [batch_size, n_agents, state_shape]
         Returns:
             value: [batch_size, n_agents]
         """
@@ -113,7 +115,7 @@ class IPPO(nn.Module):
         values = torch.stack(values, dim=1).squeeze(-1)
         return values
 
-    def get_action_and_value(self, x, actions=None):
+    def get_action_and_value(self, x, state=None, actions=None):
         """
         Args:
             x: [batch_size, n_agents, obs_shape]
@@ -247,9 +249,9 @@ class IPPO(nn.Module):
                 mb_inds = b_inds[start:end]
                 
                 if self.continuous_action:
-                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
+                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, b_actions[mb_inds])
                 else:
-                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, b_actions.long()[mb_inds])
                 
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()

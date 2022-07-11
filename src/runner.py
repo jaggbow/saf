@@ -47,10 +47,16 @@ class PGRunner:
         Returns:
         obs: [rollout_threads, n_agents, obs_shape]
         '''
-        obs = torch.from_numpy(self.env.reset()).to(self.device) # [rollout_threads*n_agents, obs_shape]
+        obs, state = self.env.reset()
+        obs = torch.from_numpy(obs).to(self.device) # [rollout_threads*n_agents, obs_shape]
         obs = obs.reshape((self.n_agents, -1)+obs.shape[1:]) # [n_agents, rollout_threads, obs_shape]
         obs = obs.transpose(1,0) # [rollout_threads, n_agents, obs_shape]
-        return obs
+
+        state = torch.from_numpy(state).to(self.device) # [rollout_threads*n_agents, state_shape]
+        state = state.reshape((self.n_agents, -1)+state.shape[1:]) # [n_agents, rollout_threads, state_shape]
+        state = state.transpose(1,0) # [rollout_threads, n_agents, state_shape]
+
+        return obs, state
 
     def env_step(self, action):
         '''
@@ -65,23 +71,25 @@ class PGRunner:
         else:
             NotImplementedError
         
-        obs, reward, done, info = self.env.step(action_)
+        obs, state, reward, done, info = self.env.step(action_)
         
         obs = torch.Tensor(obs).reshape((self.n_agents, -1)+obs.shape[1:]).to(self.device) # [n_agents, rollout_threads, obs_shape]
         obs = obs.transpose(1,0) # [rollout_threads, n_agents, obs_shape]
+        state = torch.Tensor(state).reshape((self.n_agents, -1)+state.shape[1:]).to(self.device) # [n_agents, rollout_threads, state_shape]
+        state = state.transpose(1,0) # [rollout_threads, n_agents, state_shape]
         done = torch.Tensor(done).reshape((self.n_agents, -1)).to(self.device) # [n_agents, rollout_threads]
         done = done.transpose(1,0) # [rollout_threads, n_agents]
         reward = torch.Tensor(reward).reshape((self.n_agents, -1)).to(self.device) # [n_agent, rollout_threads]
         reward = reward.transpose(1,0) # [rollout_threads, n_agents]
 
-        return obs, reward, done, info
+        return obs, state, reward, done, info
     
     def run(self):
 
         global_step = 0
         start_time = time.time()
 
-        obs = self.env_reset()
+        obs, state = self.env_reset()
         next_done = torch.zeros((self.rollout_threads, self.n_agents)).to(self.device)
 
         num_updates = self.total_timesteps // self.batch_size
@@ -96,12 +104,13 @@ class PGRunner:
                 global_step += self.rollout_threads
 
                 with torch.no_grad():
-                    action, logprob, _, value = self.policy.get_action_and_value(obs)
+                    action, logprob, _, value = self.policy.get_action_and_value(obs, state)
 
-                next_obs, reward, done, info = self.env_step(action)
+                next_obs, next_state, reward, done, info = self.env_step(action)
                 
                 self.buffer.insert(
-                    obs, 
+                    obs,
+                    state,
                     action, 
                     logprob, 
                     reward, 
@@ -112,6 +121,7 @@ class PGRunner:
                 total_rewards += reward.mean(0).sum()
                 
                 obs = next_obs
+                state = next_state
                 next_done = done
             
             print(f"global_step={global_step}, episodic_return={total_rewards}")
@@ -124,7 +134,7 @@ class PGRunner:
 
             with torch.no_grad():
                 
-                next_value = self.policy.get_value(next_obs)
+                next_value = self.policy.get_value(next_obs, next_state)
                 advantages, returns = self.policy.compute_returns(self.buffer, next_value, next_done)
                 
 
@@ -139,18 +149,19 @@ class PGRunner:
     def evaluate(self):
 
         agg_rewards = []
-        obs = self.env_reset()
+        obs, state = self.env_reset()
         for _ in range(self.eval_episodes):
             total_rewards = 0
             for _ in range(self.env_steps):
 
                 with torch.no_grad():
-                    action, _, _, _ = self.policy.get_action_and_value(obs)
+                    action, _, _, _ = self.policy.get_action_and_value(obs, state)
 
-                next_obs, reward, _, _ = self.env_step(action)
+                next_obs, next_state, reward, _, _ = self.env_step(action)
                 total_rewards += reward.mean(0).sum()
                 
                 obs = next_obs
+                state = next_state
             
             agg_rewards.append(total_rewards.item())
         

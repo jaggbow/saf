@@ -33,17 +33,40 @@ class ObstoStateWrapper(BaseParallelWraper):
                                 high = np.concatenate([obs_space.high]*num_agents, axis=-1),
                                 dtype = obs_space.dtype)
     
+    def reset(self, seed=None):
+        obs = super().reset(seed=seed)
+        if hasattr(super(), 'state_space'):
+            # Environment has state
+            _state = super().state()
+        else:
+            # Concatenate agents observation to form one state
+            _state = []
+            for agent in obs:
+                _state.append(obs[agent])
+            _state = np.concatenate(_state, axis=-1)
+
+        state = {}
+        for agent in obs:
+            state[agent] = _state
+        
+        return obs, state
+
     def step(self, all_actions):
         obs, reward, done, info = super().step(all_actions)
         if hasattr(super(), 'state_space'):
             # Environment has state
-            state = super().state()
+            _state = super().state()
         else:
             # Concatenate agents observation to form one state
-            state = []
+            _state = []
             for agent in obs:
-                state.append(obs[agent])
-            state = np.concatenate(state, axis=-1)
+                _state.append(obs[agent])
+            _state = np.concatenate(_state, axis=-1)
+        
+        state = {}
+        for agent in obs:
+            state[agent] = _state
+        
         return obs, state, reward, done, info
 
     def __str__(self):
