@@ -19,7 +19,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 class IPPO(nn.Module):
     def __init__(self, observation_space, action_space, params):
         super(IPPO, self).__init__()
-
+        # https://ppo-details.cleanrl.dev//2021/11/05/ppo-implementation-details/
         self.obs_shape = get_obs_shape(observation_space)
         self.action_shape = get_act_shape(action_space)
         self.n_layers = params.n_layers
@@ -225,7 +225,7 @@ class IPPO(nn.Module):
     
     def train_step(self, buffer, advantages, returns):
         self.train()
-        # flatten the batch
+        # Flatten the batch
         b_obs = buffer.obs.reshape((-1, self.n_agents) + self.obs_shape)
         b_logprobs = buffer.logprobs.reshape(-1, self.n_agents)
         if self.continuous_action:

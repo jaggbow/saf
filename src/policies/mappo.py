@@ -19,7 +19,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 class MAPPO(nn.Module):
     def __init__(self, observation_space, action_space, params):
         super(MAPPO, self).__init__()
-        
+        # https://ppo-details.cleanrl.dev//2021/11/05/ppo-implementation-details/
         self.obs_shape = get_obs_shape(observation_space)
         self.action_shape = get_act_shape(action_space)
         self.n_layers = params.n_layers
