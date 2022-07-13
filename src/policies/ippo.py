@@ -257,7 +257,7 @@ class IPPO(nn.Module):
                 if self.continuous_action:
                     _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, None, b_actions[mb_inds])
                 else:
-                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_action_masks[mb_inds], b_actions.long()[mb_inds])
+                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, b_action_masks[mb_inds], b_actions.long()[mb_inds])
                 
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
