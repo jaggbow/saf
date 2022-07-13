@@ -19,7 +19,6 @@ class PGRunner:
         self.n_agents = params.n_agents
         self.env_steps = params.env_steps
         self.lr_decay = params.lr_decay
-        self.n_agents = params.n_agents
         self.eval_episodes = params.eval_episodes
         self.observation_space = env.observation_space
         self.action_space = env.action_space
@@ -47,7 +46,7 @@ class PGRunner:
         Returns:
         obs: [rollout_threads, n_agents, obs_shape]
         '''
-        obs, state = self.env.reset()
+        obs, state, act_masks = self.env.reset()
         obs = torch.from_numpy(obs).to(self.device) # [rollout_threads*n_agents, obs_shape]
         obs = obs.reshape((self.n_agents, -1)+obs.shape[1:]) # [n_agents, rollout_threads, obs_shape]
         obs = obs.transpose(1,0) # [rollout_threads, n_agents, obs_shape]
@@ -56,7 +55,12 @@ class PGRunner:
         state = state.reshape((self.n_agents, -1)+state.shape[1:]) # [n_agents, rollout_threads, state_shape]
         state = state.transpose(1,0) # [rollout_threads, n_agents, state_shape]
 
-        return obs, state
+        if type(act_masks) != type(None):
+            act_masks = torch.from_numpy(act_masks).to(self.device) # [rollout_threads*n_agents, action_shape]
+            act_masks = act_masks.reshape((self.n_agents, -1)+act_masks.shape[1:]) # [n_agents, rollout_threads, action_shape]
+            act_masks = act_masks.transpose(1,0) # [rollout_threads, n_agents, action_shape]
+
+        return obs, state, act_masks
 
     def env_step(self, action):
         '''
@@ -71,25 +75,29 @@ class PGRunner:
         else:
             NotImplementedError
         
-        obs, state, reward, done, info = self.env.step(action_)
+        obs, state, act_masks, reward, done, info = self.env.step(action_)
         
         obs = torch.Tensor(obs).reshape((self.n_agents, -1)+obs.shape[1:]).to(self.device) # [n_agents, rollout_threads, obs_shape]
         obs = obs.transpose(1,0) # [rollout_threads, n_agents, obs_shape]
         state = torch.Tensor(state).reshape((self.n_agents, -1)+state.shape[1:]).to(self.device) # [n_agents, rollout_threads, state_shape]
         state = state.transpose(1,0) # [rollout_threads, n_agents, state_shape]
+        if type(act_masks) != type(None):
+            act_masks = torch.Tensor(act_masks).reshape((self.n_agents, -1)+act_masks.shape[1:]).to(self.device) # [n_agents, rollout_threads, act_shape]
+            act_masks = act_masks.transpose(1,0) # [rollout_threads, n_agents, act_shape]
         done = torch.Tensor(done).reshape((self.n_agents, -1)).to(self.device) # [n_agents, rollout_threads]
         done = done.transpose(1,0) # [rollout_threads, n_agents]
+
         reward = torch.Tensor(reward).reshape((self.n_agents, -1)).to(self.device) # [n_agent, rollout_threads]
         reward = reward.transpose(1,0) # [rollout_threads, n_agents]
 
-        return obs, state, reward, done, info
+        return obs, state, act_masks, reward, done, info
     
     def run(self):
 
         global_step = 0
         start_time = time.time()
 
-        obs, state = self.env_reset()
+        obs, state, act_masks = self.env_reset()
         next_done = torch.zeros((self.rollout_threads, self.n_agents)).to(self.device)
 
         num_updates = self.total_timesteps // self.batch_size
@@ -104,13 +112,13 @@ class PGRunner:
                 global_step += self.rollout_threads
 
                 with torch.no_grad():
-                    action, logprob, _, value = self.policy.get_action_and_value(obs, state)
+                    action, logprob, _, value = self.policy.get_action_and_value(obs, state, act_masks)
 
-                next_obs, next_state, reward, done, info = self.env_step(action)
-                
+                next_obs, next_state, next_act_masks, reward, done, info = self.env_step(action)
                 self.buffer.insert(
                     obs,
                     state,
+                    act_masks,
                     action, 
                     logprob, 
                     reward, 
@@ -122,11 +130,25 @@ class PGRunner:
                 
                 obs = next_obs
                 state = next_state
+                act_masks = next_act_masks
                 next_done = done
             
-            print(f"global_step={global_step}, episodic_return={total_rewards}")
+            
+            
+            episodic_wins = 0
+            for i in range(self.rollout_threads):
+                win = False
+                for agent_info in info[i*self.n_agents:(i+1)*self.n_agents]:
+                    if 'battle_won' in agent_info:
+                        win = agent_info['battle_won']
+                        break
+                episodic_wins += int(win)/self.rollout_threads
+
+            print(f"global_step={global_step}, episodic_return={total_rewards}, win_rate={episodic_wins}")
+
             if self.use_comet:
                 self.exp.log_metric("episodic_return", total_rewards, global_step)
+                self.exp.log_metric("episodic_win_rate", episodic_wins, global_step)
             
             if total_rewards > best_return:
                 self.save_checkpoints(self.save_dir)
@@ -149,26 +171,42 @@ class PGRunner:
     def evaluate(self):
 
         agg_rewards = []
-        obs, state = self.env_reset()
+        agg_wins = []
+        obs, state, act_mask = self.env_reset()
         for _ in range(self.eval_episodes):
             total_rewards = 0
             for _ in range(self.env_steps):
 
                 with torch.no_grad():
-                    action, _, _, _ = self.policy.get_action_and_value(obs, state)
+                    action, _, _, _ = self.policy.get_action_and_value(obs, state, act_mask)
 
-                next_obs, next_state, reward, _, _ = self.env_step(action)
+                next_obs, next_state, next_act_mask, reward, _, info = self.env_step(action)
                 total_rewards += reward.mean(0).sum()
                 
                 obs = next_obs
                 state = next_state
+                act_mask = next_act_mask
             
+            episodic_wins = 0
+            for i in range(self.rollout_threads):
+                win = False
+                for agent_info in info[i*self.n_agents:(i+1)*self.n_agents]:
+                    if 'battle_won' in agent_info:
+                        win = agent_info['battle_won']
+                        break
+                episodic_wins += int(win)/self.rollout_threads
+
             agg_rewards.append(total_rewards.item())
-        
+            agg_wins.append(episodic_wins)
+            
+                        
         mean_rewards = np.mean(agg_rewards)
         std_rewards = np.std(agg_rewards)
 
-        return mean_rewards, std_rewards
+        mean_wins = np.mean(agg_wins)
+        std_wins = np.std(agg_wins)
+
+        return mean_rewards, std_rewards, mean_wins, std_wins
 
     def load_checkpoints(self, checkpoint_dir):
         self.policy.load_checkpoints(checkpoint_dir)

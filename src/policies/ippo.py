@@ -115,11 +115,13 @@ class IPPO(nn.Module):
         values = torch.stack(values, dim=1).squeeze(-1)
         return values
 
-    def get_action_and_value(self, x, state=None, actions=None):
+    def get_action_and_value(self, x, state=None, action_mask=None, actions=None):
         """
         Args:
             x: [batch_size, n_agents, obs_shape]
-            action: [batch_size, n_agents]
+            action_mask: [batch_size, n_agents, n_actions]
+            state: [batch_size, n_agents, state_shape]
+            actions: [batch_size, n_agents]
         Returns:
             action: [batch_size, n_agents]
             logprob: [batch_size, n_agents]
@@ -137,6 +139,8 @@ class IPPO(nn.Module):
                     action_std = torch.exp(action_logstd)
                 else:
                     logits = self.actor(x[:,i])
+                    if type(action_mask) == torch.Tensor:
+                        logits[action_mask[:,i]==0] = -1e18
             else:
                 if self.continuous_action:
                     action_mean = self.actor_mean[i](x[:,i])
@@ -144,7 +148,8 @@ class IPPO(nn.Module):
                     action_std = torch.exp(action_logstd)
                 else:
                     logits = self.actor[i](x[:,i])
-            
+                    if type(action_mask) == torch.Tensor:
+                        logits[action_mask[:,i]==0] = -1e18
             if self.continuous_action:
                 probs = Normal(action_mean, action_std)
             else:
@@ -234,6 +239,7 @@ class IPPO(nn.Module):
             b_actions = buffer.actions.reshape((-1, self.n_agents)+self.action_shape)
         else:
             b_actions = buffer.actions.reshape((-1, self.n_agents))
+        b_action_masks = buffer.action_masks.reshape((-1, self.n_agents)+self.action_shape)
         b_advantages = advantages.reshape(-1, self.n_agents)
         b_returns = returns.reshape(-1, self.n_agents)
         b_values = buffer.values.reshape(-1, self.n_agents)
@@ -249,9 +255,9 @@ class IPPO(nn.Module):
                 mb_inds = b_inds[start:end]
                 
                 if self.continuous_action:
-                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, b_actions[mb_inds])
+                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, None, b_actions[mb_inds])
                 else:
-                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, b_actions.long()[mb_inds])
+                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_action_masks[mb_inds], b_actions.long()[mb_inds])
                 
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()

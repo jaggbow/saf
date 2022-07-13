@@ -1,4 +1,5 @@
 from .wrappers.obs_to_state_wrapper import ObstoStateWrapper
+from .wrappers.black_death import black_death_v3
 from .vector.vector_constructors import (
     gym_vec_env_v0,
     concat_vec_envs_v1,

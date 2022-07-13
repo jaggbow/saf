@@ -42,21 +42,22 @@ class smac_parallel_env(ParallelEnv):
 
         observation_size = env.get_obs_size()
         self.observation_spaces = {
-            name: spaces.Box(
+            name: spaces.Dict(
+                {
+                    "observation": spaces.Box(
                         low=-1,
                         high=1,
                         shape=(observation_size,),
                         dtype="float32",
-                    )
-            for name in self.agents
-        }
-        self.action_space_masks = {
-            name: spaces.Box(
+                    ),
+                    "action_mask": spaces.Box(
                         low=0,
                         high=1,
                         shape=(self.action_spaces[name].n,),
                         dtype=np.int8,
-                    )
+                    ),
+                }
+            )
             for name in self.agents
         }
         state_shape = (self.env.get_state_size(),)
@@ -65,6 +66,9 @@ class smac_parallel_env(ParallelEnv):
                     high = np.ones(state_shape),
                     dtype = "float32")
         self._reward = 0
+
+    def get_stats(self):
+        return self.env.get_stats()
 
     def _init_agents(self):
         last_type = ""
@@ -132,8 +136,7 @@ class smac_parallel_env(ParallelEnv):
         self.frames = 0
         self.all_dones = {agent: False for agent in self.possible_agents}
         all_observes_action_masks = self._observe_all()
-        all_obs = {agent: all_observes_action_masks[agent]['observation'] for agent in all_observes_action_masks}
-        return all_obs
+        return all_observes_action_masks
 
     def get_agent_smac_id(self, agent):
         return self.agents_id[agent]
@@ -186,17 +189,14 @@ class smac_parallel_env(ParallelEnv):
         all_dones = self._all_dones(done)
         all_rewards = self._all_rewards(self._reward)
         all_observes_action_masks = self._observe_all()
-        all_obs = {agent: all_observes_action_masks[agent]['observation'] for agent in all_observes_action_masks}
-        all_act_masks = {agent: all_observes_action_masks[agent]['action_mask'] for agent in all_observes_action_masks}
         
-        all_infos = {agent: {} for agent in self.agents}
-        all_infos.update(all_act_masks)
+        all_infos = {agent: smac_info for agent in self.agents}
 
         self.agents = [
             agent for agent in self.agents if not all_dones[agent]
         ]
 
-        return all_obs, all_rewards, all_dones, all_infos
+        return all_observes_action_masks, all_rewards, all_dones, all_infos
 
     def __del__(self):
         self.env.close()

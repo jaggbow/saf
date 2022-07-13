@@ -36,7 +36,18 @@ class ObstoStateWrapper(BaseParallelWraper):
             
     
     def reset(self, seed=None):
-        obs = self.env.reset(seed=seed)
+        _obs = self.env.reset(seed=seed)
+        act_mask = None
+        obs = {}
+        # Check if it contains action masks
+        if type(_obs[self.env.agents[0]]) == dict:
+            # We have action masks here
+            act_mask = {}
+            for agent in _obs:
+                obs[agent] = _obs[agent]['observation']
+                act_mask[agent] = _obs[agent]['action_mask']
+        else:
+            obs = _obs
         if hasattr(self.env, 'state_space'):
             # Environment has state
             _state = self.env.state()
@@ -52,10 +63,22 @@ class ObstoStateWrapper(BaseParallelWraper):
             state[agent] = _state
         self.agents = self.env.agents
 
-        return obs, state
+        return obs, state, act_mask
 
     def step(self, all_actions):
-        obs, reward, done, info = self.env.step(all_actions)
+        _obs, reward, done, info = self.env.step(all_actions)
+        act_mask = None
+        # Check if it contains action masks
+        if type(_obs[self.env.possible_agents[0]]) == dict:
+            # We have action masks here
+            act_mask = {}
+            obs = {}
+            for agent in _obs:
+                obs[agent] = _obs[agent]['observation']
+                act_mask[agent] = _obs[agent]['action_mask']
+        else:
+            obs = _obs
+
         if hasattr(self.env, 'state_space'):
             # Environment has state
             _state = self.env.state()
@@ -69,8 +92,8 @@ class ObstoStateWrapper(BaseParallelWraper):
         state = {}
         for agent in obs:
             state[agent] = _state
-        
-        return obs, state, reward, done, info
+
+        return obs, state, act_mask, reward, done, info
 
     def __str__(self):
         return str(self.env)
