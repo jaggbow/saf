@@ -2,7 +2,7 @@ _target_: src.policies.mappo.MAPPO
 params:
   n_layers: 2
   hidden_dim: 128
-  learning_rate: 0.0003
+  learning_rate: 0.0005
   gamma: 0.99
   gae_lambda: 0.95
   gae: False
