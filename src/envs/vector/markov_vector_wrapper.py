@@ -79,6 +79,7 @@ class MarkovVectorEnv(gym.vector.VectorEnv):
 
     def step(self, actions):
         actions = list(iterate(self.action_space, actions))
+
         agent_set = set(self.par_env.agents)
         act_dict = {
             agent: actions[i]

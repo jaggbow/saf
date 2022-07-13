@@ -23,6 +23,7 @@ def make_env(env_config):
     
     if env_config.continuous_action:
         env = ss.clip_actions_v0(env)
+
     env = ss.pad_observations_v0(env)
     env = ss.pad_action_space_v0(env)
     env = ObstoStateWrapper(env)

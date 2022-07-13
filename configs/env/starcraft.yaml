@@ -1,0 +1,8 @@
+name: 8m
+family: starcraft
+rollout_threads: ${rollout_threads}
+continuous_action: ${continuous_action}
+params:
+  map_name: ${env.name}
+  seed: ${seed}
+  debug: False

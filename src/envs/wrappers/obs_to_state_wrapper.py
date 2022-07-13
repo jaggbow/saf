@@ -1,5 +1,6 @@
 import numpy as np
 from pettingzoo.utils import BaseParallelWraper
+from supersuit.utils.wrapper_chooser import WrapperChooser
 from gym import spaces
 
 class ObstoStateWrapper(BaseParallelWraper):
@@ -10,9 +11,9 @@ class ObstoStateWrapper(BaseParallelWraper):
 
     def __init__(self, env):
         super().__init__(env)
-        if hasattr(super(), 'state_space'):
+        if hasattr(self.env, 'state_space'):
             # Environment has state
-            self.state_space = super().state_space
+            self.state_space = self.env.state_space
         else:
             obs_shape = None
             uneven_obs = False
@@ -32,30 +33,32 @@ class ObstoStateWrapper(BaseParallelWraper):
                                 low = np.concatenate([obs_space.low]*num_agents, axis=-1), 
                                 high = np.concatenate([obs_space.high]*num_agents, axis=-1),
                                 dtype = obs_space.dtype)
+            
     
     def reset(self, seed=None):
-        obs = super().reset(seed=seed)
-        if hasattr(super(), 'state_space'):
+        obs = self.env.reset(seed=seed)
+        if hasattr(self.env, 'state_space'):
             # Environment has state
-            _state = super().state()
+            _state = self.env.state()
         else:
             # Concatenate agents observation to form one state
             _state = []
             for agent in obs:
                 _state.append(obs[agent])
             _state = np.concatenate(_state, axis=-1)
-
+        
         state = {}
         for agent in obs:
             state[agent] = _state
-        
+        self.agents = self.env.agents
+
         return obs, state
 
     def step(self, all_actions):
-        obs, reward, done, info = super().step(all_actions)
-        if hasattr(super(), 'state_space'):
+        obs, reward, done, info = self.env.step(all_actions)
+        if hasattr(self.env, 'state_space'):
             # Environment has state
-            _state = super().state()
+            _state = self.env.state()
         else:
             # Concatenate agents observation to form one state
             _state = []
