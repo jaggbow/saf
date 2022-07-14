@@ -1,6 +1,6 @@
 name: waterworld
 family: sisl
-rollout_threads: 64
+rollout_threads: ${rollout_threads}
 continuous_action: True
 params: 
   n_pursuers: ${n_agents}

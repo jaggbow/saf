@@ -1,13 +1,13 @@
 #!/bin/bash
 
-#SBATCH --job-name=mappo_reference
+#SBATCH --job-name=mappo_8m
 #SBATCH --partition=long                        
 #SBATCH --cpus-per-task=6
 #SBATCH --gres=gpu:rtx8000:1
 #SBATCH --mem=60G                                     
-#SBATCH --time=3:00:00
+#SBATCH --time=24:00:00
 #SBATCH --array=1-10
-#SBATCH -o /network/scratch/o/oussama.boussif/slurms/mappo_reference-slurm-%A_%a.out  
+#SBATCH -o /network/scratch/o/oussama.boussif/slurms/mappo_8m-slurm-%A_%a.out
 
 param_store=scripts/seeds.txt
 seed=$(cat $param_store | awk -v var=$SLURM_ARRAY_TASK_ID 'NR==var {print $1}')
@@ -17,19 +17,20 @@ conda activate marl
 
 python run.py \
 policy=mappo \
+env=starcraft \
+env.name=8m \
+runner.params.lr_decay=False \
+runner.params.comet.project_name=starcraft \
+runner.params.total_timesteps=10000000 \
 policy.params.activation=relu \
 policy.params.update_epochs=15 \
 policy.params.num_minibatches=1 \
-policy.params.learning_rate=0.0007 \
+policy.params.learning_rate=0.0005 \
 policy.params.shared_actor=True \
 policy.params.shared_critic=True \
 policy.params.clip_vloss=True \
-rollout_threads=128 \
-env=simple_reference \
-runner.params.lr_decay=False \
-n_agents=2 \
+n_agents=8 \
 seed=$seed \
 continuous_action=False \
-env_steps=25 \
-runner.params.comet.project_name=simple_reference \
-runner.params.total_timesteps=3000000
+env_steps=400 \
+rollout_threads=8
