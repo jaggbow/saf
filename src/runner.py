@@ -49,17 +49,14 @@ class PGRunner:
         '''
         obs, state, act_masks = self.env.reset()
         obs = torch.from_numpy(obs).to(self.device) # [rollout_threads*n_agents, obs_shape]
-        obs = obs.reshape((self.n_agents, -1)+obs.shape[1:]) # [n_agents, rollout_threads, obs_shape]
-        obs = obs.transpose(1,0) # [rollout_threads, n_agents, obs_shape]
+        obs = obs.reshape((-1, self.n_agents)+obs.shape[1:]) # [rollout_threads, n_agents, obs_shape]
 
         state = torch.from_numpy(state).to(self.device) # [rollout_threads*n_agents, state_shape]
-        state = state.reshape((self.n_agents, -1)+state.shape[1:]) # [n_agents, rollout_threads, state_shape]
-        state = state.transpose(1,0) # [rollout_threads, n_agents, state_shape]
+        state = state.reshape((-1, self.n_agents)+state.shape[1:]) # [rollout_threads, n_agents, state_shape]
 
         if type(act_masks) != type(None):
             act_masks = torch.from_numpy(act_masks).to(self.device) # [rollout_threads*n_agents, action_shape]
-            act_masks = act_masks.reshape((self.n_agents, -1)+act_masks.shape[1:]) # [n_agents, rollout_threads, action_shape]
-            act_masks = act_masks.transpose(1,0) # [rollout_threads, n_agents, action_shape]
+            act_masks = act_masks.reshape((-1, self.n_agents)+act_masks.shape[1:]) # [rollout_threads, n_agents, action_shape]
 
         return obs, state, act_masks
 
