@@ -18,7 +18,7 @@ from src.envs import ObstoStateWrapper, pettingzoo_env_to_vec_env_v1, concat_vec
 from src.replay_buffer import ReplayBuffer
 
 
-def make_env(env_config):
+def make_train_env(env_config):
     
     env_class = get_env(env_config.name, env_config.family)
     env = env_class.parallel_env(**env_config.params)
@@ -39,6 +39,22 @@ def make_env(env_config):
 
     return env
 
+def make_eval_env(env_config):
+    
+    env_class = get_env(env_config.name, env_config.family)
+    env = env_class.parallel_env(**env_config.params)
+    
+    if env_config.continuous_action:
+        env = ss.clip_actions_v0(env)
+    if env_config.family != 'starcraft':
+        env = ss.pad_observations_v0(env)
+        env = ss.pad_action_space_v0(env)
+    else:
+        env = black_death_v3(env)
+    env = ObstoStateWrapper(env)
+
+    return env
+
 @hydra.main(config_path="configs/", config_name="config.yaml")
 def main(cfg: DictConfig):
     random.seed(cfg.seed)
@@ -48,23 +64,26 @@ def main(cfg: DictConfig):
 
     device = torch.device("cuda" if torch.cuda.is_available() and cfg.cuda else "cpu")
 
-    envs = make_env(cfg.env)
-    if isinstance(envs.observation_space, spaces.Dict):
-        observation_space = envs.observation_space['observation']
+    train_envs = make_train_env(cfg.env)
+    eval_env = make_eval_env(cfg.env)
+
+    if isinstance(train_envs.observation_space, spaces.Dict):
+        observation_space = train_envs.observation_space['observation']
     else:
-        observation_space = envs.observation_space
+        observation_space = train_envs.observation_space
 
     policy = hydra.utils.instantiate(
         cfg.policy, 
         observation_space=observation_space, 
-        action_space=envs.action_space, 
-        state_space=envs.state_space, 
+        action_space=train_envs.action_space, 
+        state_space=train_envs.state_space, 
         params=cfg.policy.params)
     policy = policy.to(device)
-    buffer = ReplayBuffer(observation_space, envs.action_space, envs.state_space, cfg.buffer, device)
+    buffer = ReplayBuffer(observation_space, train_envs.action_space, train_envs.state_space, cfg.buffer, device)
     runner = hydra.utils.instantiate(
         cfg.runner,
-        env=envs,
+        train_env=train_envs,
+        eval_env=eval_env,
         env_family=cfg.env.family,
         policy=policy, 
         buffer=buffer, 
@@ -75,7 +94,8 @@ def main(cfg: DictConfig):
         runner.run()
     mean_rewards, std_rewards, mean_wins, std_wins = runner.evaluate()
     print(f"Eval Rewards: {mean_rewards} +- {std_rewards} | Eval Win Rate: {mean_wins} +- {std_wins}")
-    envs.close()
+    train_envs.close()
+    eval_env.close()
 
 if __name__ == "__main__":
     main()

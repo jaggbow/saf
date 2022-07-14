@@ -11,7 +11,7 @@ import comet_ml
 import torch
 
 class PGRunner:
-    def __init__(self, env, env_family, policy, buffer, params, device):
+    def __init__(self, train_env, eval_env, env_family, policy, buffer, params, device):
         
         self.total_timesteps = params.total_timesteps
         self.batch_size = params.rollout_threads * params.env_steps
@@ -21,8 +21,8 @@ class PGRunner:
         self.lr_decay = params.lr_decay
         self.env_family = env_family
         self.eval_episodes = params.eval_episodes
-        self.observation_space = env.observation_space
-        self.action_space = env.action_space
+        self.observation_space = train_env.observation_space
+        self.action_space = train_env.action_space
         self.use_comet = True if params.comet else False
         self.checkpoint_dir = params.checkpoint_dir
         self.save_dir = Path(expandvars(expanduser(str(params.save_dir)))).resolve()
@@ -32,7 +32,8 @@ class PGRunner:
             self.exp = comet_ml.Experiment(project_name=params.comet.project_name)
             self.exp.set_name(f"{policy.__class__.__name__}_{os.environ['SLURM_JOB_ID']}")
 
-        self.env = env
+        self.train_env = train_env
+        self.eval_env = eval_env
         self.buffer = buffer
         self.policy = policy
         self.device = device
@@ -47,7 +48,7 @@ class PGRunner:
         Returns:
         obs: [rollout_threads, n_agents, obs_shape]
         '''
-        obs, state, act_masks = self.env.reset()
+        obs, state, act_masks = self.train_env.reset()
         obs = torch.from_numpy(obs).to(self.device) # [rollout_threads*n_agents, obs_shape]
         obs = obs.reshape((-1, self.n_agents)+obs.shape[1:]) # [rollout_threads, n_agents, obs_shape]
 
@@ -73,7 +74,7 @@ class PGRunner:
         else:
             NotImplementedError
         
-        obs, state, act_masks, reward, done, info = self.env.step(action_)
+        obs, state, act_masks, reward, done, info = self.train_env.step(action_)
         
         obs = torch.Tensor(obs).reshape((-1, self.n_agents)+obs.shape[1:]).to(self.device) # [rollout_threads, n_agents, obs_shape]
         state = torch.Tensor(state).reshape((-1, self.n_agents)+state.shape[1:]).to(self.device) # [rollout_threads, n_agents, state_shape]
@@ -178,32 +179,60 @@ class PGRunner:
 
         agg_rewards = []
         agg_wins = []
-        obs, state, act_mask = self.env_reset()
+        
+
         for _ in range(self.eval_episodes):
             total_rewards = 0
-            for _ in range(self.env_steps):
+            obs_, state_, act_mask_ = self.eval_env.reset()
+            for step in range(self.env_steps):
+
+                obs, state, act_mask = [], [], []
+                for agent in obs_:
+                    obs.append(torch.from_numpy(obs_[agent]))
+                    state.append(torch.from_numpy(state_[agent]))
+                    act_mask.append(torch.from_numpy(act_mask_[agent]))
+
+                obs = torch.stack(obs, dim=0).unsqueeze(0).to(self.device)
+                state = torch.stack(state, dim=0).unsqueeze(0).to(self.device)
+                act_mask = torch.stack(act_mask, dim=0).unsqueeze(0).to(self.device)
 
                 with torch.no_grad():
-                    action, _, _, _ = self.policy.get_action_and_value(obs, state, act_mask)
-
-                next_obs, next_state, next_act_mask, reward, _, info = self.env_step(action)
-                total_rewards += reward.mean(0).sum()
+                    action_, _, _, _ = self.policy.get_action_and_value(obs, state, act_mask)
+                    if self.action_space.__class__.__name__ == 'Box':
+                        action_ = action_.reshape(-1, action_.shape[-1]).cpu().numpy()
+                    elif self.action_space.__class__.__name__ == 'Discrete':
+                        action_ = action_.reshape(-1).cpu().numpy()
+                    else:
+                        NotImplementedError
+                    action = {}
+                    for i, agent in enumerate(obs_.keys()):
+                        action[agent] = action_[i]
                 
-                obs = next_obs
-                state = next_state
-                act_mask = next_act_mask
-            
-            episodic_wins = 0
-            for i in range(self.rollout_threads):
-                win = False
-                for agent_info in info[i*self.n_agents:(i+1)*self.n_agents]:
-                    if 'battle_won' in agent_info:
-                        win = agent_info['battle_won']
+                next_obs, next_state, next_act_mask, reward, done_, info = self.eval_env.step(action)
+                
+                for agent in reward:
+                    total_rewards += reward[agent]
+                
+                done = False
+                for agent in done_:
+                    if done_[agent]:
+                        done = True
                         break
-                episodic_wins += int(win)/self.rollout_threads
+                if done:
+                    break
+                obs_ = next_obs
+                state_ = next_state
+                act_mask_ = next_act_mask
 
-            agg_rewards.append(total_rewards.item())
-            agg_wins.append(episodic_wins)
+            win = 0
+            if self.env_family == 'starcraft':
+                for agent in info:
+                    if 'battle_won' in info[agent]:
+                        win = int(info[agent]['battle_won'])
+                        break
+            
+            agg_rewards.append(total_rewards)
+            agg_wins.append(win)
             
                         
         mean_rewards = np.mean(agg_rewards)
