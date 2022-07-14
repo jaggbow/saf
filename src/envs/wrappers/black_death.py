@@ -7,12 +7,14 @@ from supersuit.utils.wrapper_chooser import WrapperChooser
 class black_death_par(BaseParallelWraper):
     def __init__(self, env):
         super().__init__(env)
+        self.act_masks = False
 
     def _check_valid_for_black_death(self):
         for agent in self.agents:
             space = self.observation_space(agent)
             if type(space) == gym.spaces.Dict:
                 # We have action_masks
+                self.act_masks = True
                 obs_space = space['observation']
                 assert isinstance(
                 obs_space, gym.spaces.Box
@@ -48,16 +50,26 @@ class black_death_par(BaseParallelWraper):
         active_actions = {agent: actions[agent] for agent in self.env.agents}
         obss, rews, dones, infos = self.env.step(active_actions)
         agents = list(obss.keys())
-        if type(obss[agents[0]]) == dict:
-            # This contains action_mask
-            black_obs = {
-                agent: {
-                    'observation': np.zeros_like(self.observation_space(agent)['observation'].low),
-                    'action_mask': np.zeros_like(self.observation_space(agent)['action_mask'].low)
-                    }
-                for agent in self.agents
-                if agent not in obss
-            }
+        if self.act_masks:
+            if len(agents) > 0:
+                # This contains action_mask
+                black_obs = {
+                    agent: {
+                        'observation': np.zeros_like(self.observation_space(agent)['observation'].low),
+                        'action_mask': np.zeros_like(self.observation_space(agent)['action_mask'].low)
+                        }
+                    for agent in self.agents
+                    if agent not in obss
+                }
+            else:
+                # This contains action_mask
+                black_obs = {
+                    agent: {
+                        'observation': np.zeros_like(self.observation_space(agent)['observation'].low),
+                        'action_mask': np.zeros_like(self.observation_space(agent)['action_mask'].low)
+                        }
+                    for agent in self.agents
+                }
         else:
             black_obs = {
                 agent: np.zeros_like(self.observation_space(agent).low)

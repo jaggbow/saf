@@ -64,7 +64,8 @@ def main(cfg: DictConfig):
     buffer = ReplayBuffer(observation_space, envs.action_space, envs.state_space, cfg.buffer, device)
     runner = hydra.utils.instantiate(
         cfg.runner,
-        env=envs, 
+        env=envs,
+        env_family=cfg.env.family,
         policy=policy, 
         buffer=buffer, 
         params=cfg.runner.params, 

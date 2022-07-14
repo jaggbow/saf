@@ -11,7 +11,7 @@ import comet_ml
 import torch
 
 class PGRunner:
-    def __init__(self, env, policy, buffer, params, device):
+    def __init__(self, env, env_family, policy, buffer, params, device):
         
         self.total_timesteps = params.total_timesteps
         self.batch_size = params.rollout_threads * params.env_steps
@@ -19,6 +19,7 @@ class PGRunner:
         self.n_agents = params.n_agents
         self.env_steps = params.env_steps
         self.lr_decay = params.lr_decay
+        self.env_family = env_family
         self.eval_episodes = params.eval_episodes
         self.observation_space = env.observation_space
         self.action_space = env.action_space
@@ -71,24 +72,19 @@ class PGRunner:
         if self.action_space.__class__.__name__ == 'Box':
             action_ = action.reshape(-1, action.shape[-1]).cpu().numpy()
         elif self.action_space.__class__.__name__ == 'Discrete':
-            action_ = action.transpose(1,0).reshape(-1).cpu().numpy()
+            action_ = action.reshape(-1).cpu().numpy()
         else:
             NotImplementedError
         
         obs, state, act_masks, reward, done, info = self.env.step(action_)
         
-        obs = torch.Tensor(obs).reshape((self.n_agents, -1)+obs.shape[1:]).to(self.device) # [n_agents, rollout_threads, obs_shape]
-        obs = obs.transpose(1,0) # [rollout_threads, n_agents, obs_shape]
-        state = torch.Tensor(state).reshape((self.n_agents, -1)+state.shape[1:]).to(self.device) # [n_agents, rollout_threads, state_shape]
-        state = state.transpose(1,0) # [rollout_threads, n_agents, state_shape]
+        obs = torch.Tensor(obs).reshape((-1, self.n_agents)+obs.shape[1:]).to(self.device) # [rollout_threads, n_agents, obs_shape]
+        state = torch.Tensor(state).reshape((-1, self.n_agents)+state.shape[1:]).to(self.device) # [rollout_threads, n_agents, state_shape]
         if type(act_masks) != type(None):
-            act_masks = torch.Tensor(act_masks).reshape((self.n_agents, -1)+act_masks.shape[1:]).to(self.device) # [n_agents, rollout_threads, act_shape]
-            act_masks = act_masks.transpose(1,0) # [rollout_threads, n_agents, act_shape]
-        done = torch.Tensor(done).reshape((self.n_agents, -1)).to(self.device) # [n_agents, rollout_threads]
-        done = done.transpose(1,0) # [rollout_threads, n_agents]
+            act_masks = torch.Tensor(act_masks).reshape((-1, self.n_agents)+act_masks.shape[1:]).to(self.device) # [rollout_threads, n_agents, act_shape]
+        done = torch.Tensor(done).reshape((-1, self.n_agents)).to(self.device) # [rollout_threads, n_agents]
 
-        reward = torch.Tensor(reward).reshape((self.n_agents, -1)).to(self.device) # [n_agent, rollout_threads]
-        reward = reward.transpose(1,0) # [rollout_threads, n_agents]
+        reward = torch.Tensor(reward).reshape((-1, self.n_agents)).to(self.device) # [rollout_threads, n_agent]
 
         return obs, state, act_masks, reward, done, info
     
@@ -108,6 +104,10 @@ class PGRunner:
                 self.policy.update_lr(update, num_updates)
 
             total_rewards = 0
+            
+            nb_games = np.ones(self.rollout_threads)
+            nb_wins = np.zeros(self.rollout_threads)
+
             for step in range(self.env_steps):
                 global_step += self.rollout_threads
 
@@ -115,6 +115,7 @@ class PGRunner:
                     action, logprob, _, value = self.policy.get_action_and_value(obs, state, act_masks)
 
                 next_obs, next_state, next_act_masks, reward, done, info = self.env_step(action)
+
                 self.buffer.insert(
                     obs,
                     state,
@@ -126,31 +127,39 @@ class PGRunner:
                     next_done, 
                     step)
                 
-                total_rewards += reward.mean(0).sum()
+                if self.env_family == 'starcraft':
+                    total_rewards += reward.max(-1)[0] # (rollout_threads,)
+                    # For each rollout, track the number of games player so far and record the wins for finished games
+                    for i in range(self.rollout_threads):
+                        if torch.isin(1, done[i]):
+                            nb_games[i] += 1 
+                            for agent_info in info[i*self.n_agents:(i+1)*self.n_agents]:
+                                if 'battle_won' in agent_info:
+                                    nb_wins[i] += int(agent_info['battle_won'])
+                                    break
+                else:
+                    total_rewards += reward.sum(-1) # (rollout_threads,)
                 
                 obs = next_obs
                 state = next_state
                 act_masks = next_act_masks
                 next_done = done
-            
-            
-            
-            episodic_wins = 0
-            for i in range(self.rollout_threads):
-                win = False
-                for agent_info in info[i*self.n_agents:(i+1)*self.n_agents]:
-                    if 'battle_won' in agent_info:
-                        win = agent_info['battle_won']
-                        break
-                episodic_wins += int(win)/self.rollout_threads
 
-            print(f"global_step={global_step}, episodic_return={total_rewards}, win_rate={episodic_wins}")
-
-            if self.use_comet:
-                self.exp.log_metric("episodic_return", total_rewards, global_step)
-                self.exp.log_metric("episodic_win_rate", episodic_wins, global_step)
+            if self.env_family == 'starcraft':
+                total_rewards = total_rewards.cpu()/nb_games
+                total_rewards = total_rewards.mean().item()
+                episodic_wins = (nb_wins/nb_games).mean()
+                print(f"global_step={global_step}, episodic_return={total_rewards}, episodic_win_rate={episodic_wins}")
+                if self.use_comet:
+                    self.exp.log_metric("episodic_return", total_rewards, global_step)
+                    self.exp.log_metric("episodic_win_rate", episodic_wins, global_step)
+            else:
+                total_rewards = total_rewards.mean().item()
+                print(f"global_step={global_step}, episodic_return={total_rewards}")
+                if self.use_comet:
+                    self.exp.log_metric("episodic_return", total_rewards, global_step)
             
-            if total_rewards > best_return:
+            if total_rewards >= best_return:
                 self.save_checkpoints(self.save_dir)
                 best_return = total_rewards
 
