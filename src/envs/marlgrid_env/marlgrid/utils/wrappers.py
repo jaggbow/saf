@@ -29,18 +29,45 @@ class PermuteObsWrapper(gym.core.ObservationWrapper):
         obs = [obs.transpose(2, 0, 1) for obs in obs]
         return obs, reward, done, info
 
+class AddStateSpaceActMaskWrapper(gym.core.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        obs_shape = self.observation_space[0].shape
+        obs_flatten_shape = obs_shape[0] * obs_shape[1] * obs_shape[2]
+
+        self.state_space = gym.spaces.Box(
+            low=0,
+            high=255,
+            shape=(obs_flatten_shape * self.num_agents,),
+            dtype='uint8',
+        )
+
+    def reset(self):
+        obs = self.env.reset()
+        state = [agent_obs.flatten() for agent_obs in obs]
+        state = np.concatenate(state)
+
+        return obs, state, None
+    
+    def step(self, actions):
+        obs, reward, done, info = self.env.step(actions)
+        state = [agent_obs.flatten() for agent_obs in obs]
+        state = np.concatenate(state)
+
+        return obs, state, None, reward, done, info
+
 def worker(conn, env):
     while True:
         cmd, data = conn.recv()
         # print(f'Received command: {cmd} and action {data}')
         if cmd == "step":
-            obs, reward, done, info = env.step(data)
+            obs, state, act_mask, reward, done, info = env.step(data)
             if done:
                 obs = env.reset()
-            conn.send((obs, reward, done, info))
+            conn.send((obs, state, act_mask, reward, done, info))
         elif cmd == "reset":
-            obs = env.reset()
-            conn.send(obs)
+            obs, state, act_mask = env.reset()
+            conn.send((obs, state, act_mask))
         else:
             raise NotImplementedError
 
@@ -53,6 +80,7 @@ class ParallelEnv(gym.Env):
         self.envs = envs
         self.observation_space = tuple(self.envs[0].observation_space)
         self.action_space = tuple(self.envs[0].action_space)
+        self.state_space = self.envs[0].state_space
 
         self.locals = []
         self.processes = []
@@ -72,8 +100,15 @@ class ParallelEnv(gym.Env):
             # print(f'Sending the reset command to process {i}')
             local.send(("reset", None))
             i += 1
-        results = [self.envs[0].reset()] + [local.recv() for local in self.locals]
-        return results
+        
+        obs, state, act_mask = self.envs[0].reset()
+        results = zip(*[(obs, state, act_mask)] + [local.recv() for local in self.locals])
+
+        obs, state, act_mask = results
+        obs = np.array(obs).reshape((-1,)+self.envs[0].observation_space.shape)
+        state = np.array(state).reshape((-1,)+self.envs[0].state_space.shape)
+
+        return obs, state, None
 
     def step(self, actions):
         # print(f"Taking actions: {actions} of type {actions.dtype}")
@@ -82,11 +117,19 @@ class ParallelEnv(gym.Env):
             # print(f"Sending action {action} to process {i}")
             local.send(("step", action))
             i += 1
-        obs, reward, done, info = self.envs[0].step(actions[0])
+        obs, state, act_mask, reward, done, info = self.envs[0].step(actions[0])
         if done:
             obs = self.envs[0].reset()
-        results = zip(*[(obs, reward, done, info)] + [local.recv() for local in self.locals])
-        return results
+        results = zip(*[(obs, state, act_mask, reward, done, info)] + [local.recv() for local in self.locals])
+        
+        obs, state, act_mask, reward, done, info = results
+
+        obs = np.array(obs).reshape((-1,)+self.envs[0].observation_space.shape)
+        state = np.array(state).reshape((-1,)+self.envs[0].state_space.shape)
+        reward = np.array(reward)
+        done = np.array(reward)       
+        
+        return obs, state, None, reward, done, info
 
     def render(self):
         raise NotImplementedError

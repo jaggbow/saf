@@ -13,24 +13,30 @@ class ReplayBuffer:
         self.continuous_action = params.continuous_action
         self.obs_shape = get_obs_shape(observation_space)
         self.action_shape = get_act_shape(action_space)
-        self.state_shape = get_obs_shape(state_space)
+        
         self.device = device
 
         self.obs = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)+self.obs_shape).float().to(device)
-        self.state = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)+self.state_shape).float().to(device)
+        
         if self.continuous_action:
             self.actions = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)+self.action_shape).float().to(device)
         else:
             self.actions = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)).float().to(device)
+        
         self.action_masks = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)+self.action_shape).float().to(device)
         self.logprobs = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)).float().to(device)
         self.rewards = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)).float().to(device)
         self.values = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)).float().to(device)
         self.dones = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)).float().to(device)
 
+        self.state_space = state_space
+
+        if state_space is not None:
+            self.state_shape = get_obs_shape(state_space)
+            self.state = torch.zeros((self.env_steps, self.rollout_threads, self.n_agents)+self.state_shape).float().to(device)
 
     def insert(
-        self, 
+        self,
         obs: torch.Tensor,
         state: torch.Tensor,
         action_masks: torch.Tensor,
@@ -42,7 +48,10 @@ class ReplayBuffer:
         step):
 
         self.obs[step] = obs
-        self.state[step] = state
+
+        if self.state_space is not None:
+            self.state[step] = state
+        
         if type(action_masks) == type(None):
             # No action masks, so make a custom action mask with ones everywhere (which means all actions are valid)
             self.action_masks[step] = torch.ones_like(self.action_masks[step])

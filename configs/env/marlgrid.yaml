@@ -11,5 +11,5 @@ params:
   grid_size: 30
   max_steps: 150
   view_size: 7
-  view_tile_size: 8
+  view_tile_size: 4
   clutter_density: 0.1
