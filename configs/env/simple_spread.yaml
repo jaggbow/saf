@@ -2,6 +2,7 @@ name: simple_spread
 family: mpe
 rollout_threads: ${rollout_threads}
 continuous_action: ${continuous_action}
+obs_type: vector
 params: 
   N: ${n_agents} 
   local_ratio: 0.5

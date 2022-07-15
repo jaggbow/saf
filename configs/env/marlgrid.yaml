@@ -1,0 +1,15 @@
+name: ClutteredGoalTileEnv
+family: marlgrid
+rollout_threads: ${rollout_threads}
+continuous_action: ${continuous_action}
+obs_type: image
+params:
+  N: ${n_agents}
+  max_cycles: ${env_steps}
+  continuous_actions: ${env.continuous_action}
+  num_goals: 100
+  grid_size: 30
+  max_steps: 150
+  view_size: 7
+  view_tile_size: 8
+  clutter_density: 0.1

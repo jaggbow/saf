@@ -14,13 +14,18 @@ import hydra
 from omegaconf import DictConfig
 
 from src.envs import get_env
-from src.envs import ObstoStateWrapper, pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1, black_death_v3
+from src.envs import ObstoStateWrapper, pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1, black_death_v3, PermuteObsWrapper, ParallelEnv
 from src.replay_buffer import ReplayBuffer
 
 
 def make_train_env(env_config):
     
-    env_class = get_env(env_config.name, env_config.family)
+    if env_config.family == 'marlgrid':
+        envs = [PermuteObsWrapper(get_env(env_config.name, env_config.family, env_config.params)) for _ in range(env_config.rollout_threads)]
+        env = ParallelEnv(envs)
+        return env
+    
+    env_class = get_env(env_config.name, env_config.family, env_config.params)
     env = env_class.parallel_env(**env_config.params)
     
     if env_config.continuous_action:
@@ -30,7 +35,9 @@ def make_train_env(env_config):
         env = ss.pad_action_space_v0(env)
     else:
         env = black_death_v3(env)
+
     env = ObstoStateWrapper(env)
+    
     if env_config.family == 'starcraft':
         env = pettingzoo_env_to_vec_env_v1(env, black_death=True)
     else:
@@ -41,7 +48,13 @@ def make_train_env(env_config):
 
 def make_eval_env(env_config):
     
-    env_class = get_env(env_config.name, env_config.family)
+    if env_config.family == 'marlgrid':
+        envs = [PermuteObsWrapper(get_env(env_config.name, env_config.family, env_config.params)) for _ in range(env_config.rollout_threads)]
+        env = ParallelEnv(envs)
+        return env
+
+    env_class = get_env(env_config.name, env_config.family, env_config.params)
+
     env = env_class.parallel_env(**env_config.params)
     
     if env_config.continuous_action:
@@ -69,13 +82,20 @@ def main(cfg: DictConfig):
 
     if isinstance(train_envs.observation_space, spaces.Dict):
         observation_space = train_envs.observation_space['observation']
+    elif isinstance(train_envs.observation_space, tuple):
+        observation_space = train_envs.observation_space[0]
     else:
         observation_space = train_envs.observation_space
+
+    if isinstance(train_envs.action_space, tuple):
+        action_space = train_envs.action_space[0]
+    else:
+        action_space = train_envs.action_space
 
     policy = hydra.utils.instantiate(
         cfg.policy, 
         observation_space=observation_space, 
-        action_space=train_envs.action_space, 
+        action_space=action_space, 
         state_space=train_envs.state_space, 
         params=cfg.policy.params)
     policy = policy.to(device)
