@@ -22,4 +22,6 @@ params:
   continuous_action: ${continuous_action}
   shared_actor: False
   shared_critic: False
+  type: mlp
+  conv_out_size: 64
   

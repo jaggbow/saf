@@ -15,7 +15,7 @@ from omegaconf import DictConfig
 
 from src.envs import get_env
 from src.envs import ObstoStateWrapper, pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1, black_death_v3, PermuteObsWrapper, AddStateSpaceActMaskWrapper, ParallelEnv
-from src.replay_buffer import ReplayBuffer
+from src.replay_buffer import ReplayBuffer, ReplayBufferImageObs
 
 
 def make_train_env(env_config):
@@ -92,11 +92,11 @@ def main(cfg: DictConfig):
     else:
         action_space = train_envs.action_space
 
-    if cfg.env.obs_type == 'image' and cfg.policy.type == 'conv':
+    if cfg.env.obs_type == 'image' and cfg.policy.params.type == 'conv':
         state_space = spaces.Box(
             low=-float('inf'),
             high=float('inf'),
-            shape=(cfg.policy.conv_out_size),
+            shape=(cfg.policy.conv_out_size * cfg.rollout_threads),
             dtype='float',
         )
     else:
@@ -111,8 +111,8 @@ def main(cfg: DictConfig):
     
     policy = policy.to(device)
     
-    if cfg.env.obs_type == 'image':
-        buffer = ReplayBuffer(observation_space, action_space, None, cfg.buffer, device)
+    if cfg.env.obs_type == 'image' and cfg.policy.params.type == 'conv':
+        buffer = ReplayBufferImageObs(observation_space, action_space, cfg.buffer, device)
     else:
         buffer = ReplayBuffer(observation_space, action_space, state_space, cfg.buffer, device)
         

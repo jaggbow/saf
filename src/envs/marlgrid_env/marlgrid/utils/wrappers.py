@@ -111,10 +111,11 @@ class ParallelEnv(gym.Env):
         return obs, state, None
 
     def step(self, actions):
-        # print(f"Taking actions: {actions} of type {actions.dtype}")
+
+        actions = actions.reshape(-1, self.num_agents).tolist()
+
         i = 0
         for local, action in zip(self.locals, actions[1:]):
-            # print(f"Sending action {action} to process {i}")
             local.send(("step", action))
             i += 1
         obs, state, act_mask, reward, done, info = self.envs[0].step(actions[0])

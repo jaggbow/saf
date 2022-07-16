@@ -10,9 +10,11 @@ import comet_ml
 
 import torch
 
+from replay_buffer import ReplayBuffer, ReplayBufferImageObs
+
 class PGRunner:
     def __init__(self, train_env, eval_env, env_family, policy, buffer, params, device):
-        
+
         self.total_timesteps = params.total_timesteps
         self.batch_size = params.rollout_threads * params.env_steps
         self.rollout_threads = params.rollout_threads
@@ -114,16 +116,27 @@ class PGRunner:
 
                 next_obs, next_state, next_act_masks, reward, done, info = self.env_step(action)
 
-                self.buffer.insert(
-                    obs,
-                    state,
-                    act_masks,
-                    action, 
-                    logprob, 
-                    reward, 
-                    value, 
-                    next_done, 
-                    step)
+                if isinstance(self.buffer, ReplayBuffer):
+                    self.buffer.insert(
+                        obs,
+                        state,
+                        act_masks,
+                        action, 
+                        logprob, 
+                        reward, 
+                        value, 
+                        next_done, 
+                        step)
+                elif isinstance(self.buffer, ReplayBufferImageObs):
+                    self.buffer.insert(
+                        obs,
+                        act_masks,
+                        action, 
+                        logprob, 
+                        reward, 
+                        value, 
+                        next_done, 
+                        step)
                 
                 if self.env_family == 'starcraft':
                     total_rewards += reward.max(-1)[0] # (rollout_threads,)

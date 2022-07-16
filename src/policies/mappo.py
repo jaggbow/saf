@@ -7,6 +7,7 @@ from torch.distributions.categorical import Categorical
 from torch.distributions.normal import Normal
 
 from src.architectures.mlp import MLP
+from src.architectures.cnn import CNN
 from src.utils import *
 
 
@@ -20,6 +21,8 @@ class MAPPO(nn.Module):
     def __init__(self, observation_space, action_space, state_space, params):
         super(MAPPO, self).__init__()
         # https://ppo-details.cleanrl.dev//2021/11/05/ppo-implementation-details/
+        
+        self.type = type
         self.obs_shape = get_obs_shape(observation_space)
         self.state_shape = get_state_shape(state_space)
         self.action_shape = get_act_shape(action_space)
@@ -46,6 +49,13 @@ class MAPPO(nn.Module):
         self.shared_actor = params.shared_actor
         self.continuous_action = params.continuous_action
 
+        if self.type == 'conv':
+            assert len(self.obs_shape) == 3, 'Convolutional policy cannot be used for non-image observations!'
+            self.conv = CNN(out_size=params.conv_out_size).to(self.device)
+            self.input_shape = params.conv_out_size
+        else:
+            self.input_shape = self.obs_shape
+        
         if self.shared_critic:
             self.critic = MLP(
                 np.array(self.state_shape).prod(), 
@@ -64,7 +74,7 @@ class MAPPO(nn.Module):
         if self.shared_actor:
             if self.continuous_action:
                 self.actor_mean = MLP(
-                np.array(self.obs_shape).prod(), 
+                np.array(self.input_shape).prod(), 
                 [self.hidden_dim]*self.n_layers, 
                 np.array(self.action_shape).prod(), 
                 std=0.01,
@@ -73,7 +83,7 @@ class MAPPO(nn.Module):
                 self.actor_logstd = nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod()))
             else:
                 self.actor = MLP(
-                    np.array(self.obs_shape).prod(), 
+                    np.array(self.input_shape).prod(), 
                     [self.hidden_dim]*self.n_layers, 
                     np.array(self.action_shape).prod(), 
                     std=0.01,
@@ -82,7 +92,7 @@ class MAPPO(nn.Module):
             if self.continuous_action:
                 
                 self.actor_mean = nn.ModuleList([MLP(
-                np.array(self.obs_shape).prod(), 
+                np.array(self.input_shape).prod(), 
                 [self.hidden_dim]*self.n_layers, 
                 np.array(self.action_shape).prod(), 
                 std=0.01,
@@ -92,7 +102,7 @@ class MAPPO(nn.Module):
                     nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod())) for _ in range(self.n_agents)])
             else:
                 self.actor = nn.ModuleList([MLP(
-                    np.array(self.obs_shape).prod(), 
+                    np.array(self.input_shape).prod(), 
                     [self.hidden_dim]*self.n_layers, 
                     np.array(self.action_shape).prod(), 
                     std=0.01,
@@ -108,6 +118,7 @@ class MAPPO(nn.Module):
         Returns:
             value: [batch_size, n_agents]
         """
+        
         values = []
         for i in range(self.n_agents): 
             if self.shared_critic:
@@ -129,9 +140,19 @@ class MAPPO(nn.Module):
             entropy: [batch_size, n_agents]
             value: [batch_size, n_agents]
         """
+        
+        if self.type == 'conv':
+            bs = x.shape[0]
+            n_ags = x.shape[1]
+            x = x.reshape((-1,)+self.obs_shape)
+            x = self.conv(x)
+            x = x.reshape(bs, n_ags, self.input_shape)
+            state = x.reshape(bs, n_ags * self.input_shape)
+
         out_actions = []
         logprobs = []
         entropies = []
+
         for i in range(self.n_agents):
             if self.shared_actor:
                 if self.continuous_action:
@@ -151,6 +172,7 @@ class MAPPO(nn.Module):
                     logits = self.actor[i](x[:,i])
                     if type(action_mask) == torch.Tensor:
                         logits[action_mask[:,i]==0] = -1e18
+            
             if self.continuous_action:
                 probs = Normal(action_mean, action_std)
             else:
@@ -235,12 +257,18 @@ class MAPPO(nn.Module):
         self.train()
         # flatten the batch
         b_obs = buffer.obs.reshape((-1, self.n_agents) + self.obs_shape)
-        b_state = buffer.state.reshape((-1, self.n_agents) + self.state_shape)
+        
+        if hasattr(buffer, 'state'):
+            b_state = buffer.state.reshape((-1, self.n_agents) + self.state_shape)
+        else:
+            b_state = None
+
         b_logprobs = buffer.logprobs.reshape(-1, self.n_agents)
         if self.continuous_action:
             b_actions = buffer.actions.reshape((-1, self.n_agents)+self.action_shape)
         else:
             b_actions = buffer.actions.reshape((-1, self.n_agents))
+
         b_action_masks = buffer.action_masks.reshape((-1, self.n_agents)+self.action_shape)
         b_advantages = advantages.reshape(-1, self.n_agents)
         b_returns = returns.reshape(-1, self.n_agents)
@@ -256,10 +284,16 @@ class MAPPO(nn.Module):
                 end = start + self.minibatch_size
                 mb_inds = b_inds[start:end]
 
-                if self.continuous_action:
-                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], None, b_actions[mb_inds])
+                if b_state is not None:
+                    if self.continuous_action:
+                        _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], None, b_actions[mb_inds])
+                    else:
+                        _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], b_action_masks[mb_inds], b_actions.long()[mb_inds])
                 else:
-                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], b_action_masks[mb_inds], b_actions.long()[mb_inds])
+                    if self.continuous_action:
+                        _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, None, b_actions[mb_inds])
+                    else:
+                        _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, b_action_masks[mb_inds], b_actions.long()[mb_inds])
                 
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
