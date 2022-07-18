@@ -52,7 +52,7 @@ class IPPO(nn.Module):
 
         if self.type == 'conv':
             assert len(self.obs_shape) == 3, 'Convolutional policy cannot be used for non-image observations!'
-            self.conv = CNN(out_size=params.conv_out_size).to(self.device)
+            self.conv = CNN(out_size=params.conv_out_size)
             self.input_shape = params.conv_out_size
         else:
             self.input_shape = self.obs_shape

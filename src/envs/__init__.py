@@ -5,7 +5,7 @@ from .vector.vector_constructors import (
     concat_vec_envs_v1,
     pettingzoo_env_to_vec_env_v1,
 )
-from marlgrid.wrappers import PermuteObsWrapper, ParallelEnv
+from marlgrid.utils.wrappers import PermuteObsWrapper, ParallelEnv, AddStateSpaceActMaskWrapper
 
 def get_env(env_name, family, params):
     if family == 'mpe':
@@ -45,6 +45,8 @@ def get_env(env_name, family, params):
             }
         )
 
-        env = gym.make(env_name)
+        env = gym.make(env_instance_name)
+
+        return env
     else:
         raise "Unrecognized family name, please pick a family in [mpe, sisl, starcraft]"

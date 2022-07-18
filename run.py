@@ -1,5 +1,6 @@
 import random
 import os
+import warnings
 
 import comet_ml
 import supersuit as ss
@@ -16,6 +17,9 @@ from omegaconf import DictConfig
 from src.envs import get_env
 from src.envs import ObstoStateWrapper, pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1, black_death_v3, PermuteObsWrapper, AddStateSpaceActMaskWrapper, ParallelEnv
 from src.replay_buffer import ReplayBuffer, ReplayBufferImageObs
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 
 def make_train_env(env_config):
@@ -96,9 +100,11 @@ def main(cfg: DictConfig):
         state_space = spaces.Box(
             low=-float('inf'),
             high=float('inf'),
-            shape=(cfg.policy.conv_out_size * cfg.rollout_threads),
+            shape=(cfg.policy.params.conv_out_size * cfg.n_agents,),
             dtype='float',
         )
+    elif isinstance(train_envs.state_space, tuple):
+        state_space = train_envs.state_space[0]
     else:
         state_space = train_envs.state_space
 

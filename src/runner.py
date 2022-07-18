@@ -5,12 +5,12 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from gym import spaces
+
 from tqdm import tqdm
 import comet_ml
 
 import torch
-
-from replay_buffer import ReplayBuffer, ReplayBufferImageObs
 
 class PGRunner:
     def __init__(self, train_env, eval_env, env_family, policy, buffer, params, device):
@@ -23,15 +23,25 @@ class PGRunner:
         self.lr_decay = params.lr_decay
         self.env_family = env_family
         self.eval_episodes = params.eval_episodes
-        self.observation_space = train_env.observation_space
-        self.action_space = train_env.action_space
         self.use_comet = True if params.comet else False
         self.checkpoint_dir = params.checkpoint_dir
         self.save_dir = Path(expandvars(expanduser(str(params.save_dir)))).resolve()
         self.save_dir.mkdir(parents=True, exist_ok=True)
+
+        if isinstance(train_env.observation_space, spaces.Dict):
+            self.observation_space = train_env.observation_space['observation']
+        elif isinstance(train_env.observation_space, tuple):
+            self.observation_space = train_env.observation_space[0]
+        else:
+            self.observation_space = train_env.observation_space
+
+        if isinstance(train_env.action_space, tuple):
+            self.action_space = train_env.action_space[0]
+        else:
+            self.action_space = train_env.action_space
         
         if self.use_comet:
-            self.exp = comet_ml.Experiment(project_name=params.comet.project_name)
+            self.exp = comet_ml.Experiment(api_key="AIxlnGNX5bfAXGPOMAWbAymIz", project_name=params.comet.project_name)
             self.exp.set_name(f"{policy.__class__.__name__}_{os.environ['SLURM_JOB_ID']}")
 
         self.train_env = train_env
@@ -69,14 +79,20 @@ class PGRunner:
         Args:
             action: [rollout_threads, n_agents] for Discrete type and [rollout_threads, n_agents, action_dim] for Box type
         '''
+        
+        print(f'\n-------------------------------------\n')
+        print(f'Shape of action into env_step(): {action.shape}')
         if self.action_space.__class__.__name__ == 'Box':
             action_ = action.reshape(-1, action.shape[-1]).cpu().numpy()
         elif self.action_space.__class__.__name__ == 'Discrete':
             action_ = action.reshape(-1).cpu().numpy()
         else:
-            NotImplementedError
+            raise NotImplementedError
+
+        print(f'Shape of action in env_step() after reshaping: {action_.shape}')
         
         obs, state, act_masks, reward, done, info = self.train_env.step(action_)
+        print(f'Shape of obs, state, reward, done out of env.step(): {obs.shape, state.shape, reward.shape, done.shape}')
         
         obs = torch.Tensor(obs).reshape((-1, self.n_agents)+obs.shape[1:]).to(self.device) # [rollout_threads, n_agents, obs_shape]
         state = torch.Tensor(state).reshape((-1, self.n_agents)+state.shape[1:]).to(self.device) # [rollout_threads, n_agents, state_shape]
@@ -85,6 +101,8 @@ class PGRunner:
         done = torch.Tensor(done).reshape((-1, self.n_agents)).to(self.device) # [rollout_threads, n_agents]
 
         reward = torch.Tensor(reward).reshape((-1, self.n_agents)).to(self.device) # [rollout_threads, n_agent]
+
+        print(f'Shape of obs, state, reward, done outgoing from env_step(): {obs.shape, state.shape, reward.shape, done.shape}')
 
         return obs, state, act_masks, reward, done, info
     
@@ -109,6 +127,7 @@ class PGRunner:
             nb_wins = np.zeros(self.rollout_threads)
 
             for step in range(self.env_steps):
+                print(f'Update Step: {update} | Env Step: {step}')
                 global_step += self.rollout_threads
 
                 with torch.no_grad():
@@ -116,26 +135,26 @@ class PGRunner:
 
                 next_obs, next_state, next_act_masks, reward, done, info = self.env_step(action)
 
-                if isinstance(self.buffer, ReplayBuffer):
+                if len(self.observation_space.shape) == 3:
+                    self.buffer.insert(
+                        obs,
+                        act_masks,
+                        action,
+                        logprob,
+                        reward,
+                        value,
+                        next_done,
+                        step) 
+                else:
                     self.buffer.insert(
                         obs,
                         state,
                         act_masks,
-                        action, 
-                        logprob, 
-                        reward, 
-                        value, 
-                        next_done, 
-                        step)
-                elif isinstance(self.buffer, ReplayBufferImageObs):
-                    self.buffer.insert(
-                        obs,
-                        act_masks,
-                        action, 
-                        logprob, 
-                        reward, 
-                        value, 
-                        next_done, 
+                        action,
+                        logprob,
+                        reward,
+                        value,
+                        next_done,
                         step)
                 
                 if self.env_family == 'starcraft':

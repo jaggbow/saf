@@ -8,9 +8,9 @@ class CNN(nn.Module):
         in_channels=3,
         channels=[32, 64],
         kernel_sizes=[4, 3],
-        strides=[4, 2],
-        hidden_layer=1024,
-        out_size=512,):
+        strides=[2, 2],
+        hidden_layer=512,
+        out_size=64,):
 
         super().__init__()
 

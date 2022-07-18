@@ -35,17 +35,20 @@ class AddStateSpaceActMaskWrapper(gym.core.Wrapper):
         obs_shape = self.observation_space[0].shape
         obs_flatten_shape = obs_shape[0] * obs_shape[1] * obs_shape[2]
 
-        self.state_space = gym.spaces.Box(
+        self.state_space = [gym.spaces.Box(
             low=0,
             high=255,
             shape=(obs_flatten_shape * self.num_agents,),
             dtype='uint8',
-        )
+        ) for _ in range(self.env.num_agents)]
+
+        self.state_space = tuple(self.state_space)
 
     def reset(self):
         obs = self.env.reset()
         state = [agent_obs.flatten() for agent_obs in obs]
         state = np.concatenate(state)
+        state = [state.tolist() for _ in range(self.env.num_agents)]
 
         return obs, state, None
     
@@ -53,6 +56,7 @@ class AddStateSpaceActMaskWrapper(gym.core.Wrapper):
         obs, reward, done, info = self.env.step(actions)
         state = [agent_obs.flatten() for agent_obs in obs]
         state = np.concatenate(state)
+        state = [state.tolist() for _ in range(self.env.num_agents)]
 
         return obs, state, None, reward, done, info
 
@@ -78,9 +82,10 @@ class ParallelEnv(gym.Env):
         assert len(envs) >= 1, "No environment given."
 
         self.envs = envs
+        self.num_agents = self.envs[0].num_agents
         self.observation_space = tuple(self.envs[0].observation_space)
         self.action_space = tuple(self.envs[0].action_space)
-        self.state_space = self.envs[0].state_space
+        self.state_space = tuple(self.envs[0].state_space)
 
         self.locals = []
         self.processes = []
@@ -105,8 +110,9 @@ class ParallelEnv(gym.Env):
         results = zip(*[(obs, state, act_mask)] + [local.recv() for local in self.locals])
 
         obs, state, act_mask = results
-        obs = np.array(obs).reshape((-1,)+self.envs[0].observation_space.shape)
-        state = np.array(state).reshape((-1,)+self.envs[0].state_space.shape)
+
+        obs = np.array(obs).reshape((-1,)+self.envs[0].observation_space[0].shape)
+        state = np.array(state).reshape((-1,)+self.envs[0].state_space[0].shape)
 
         return obs, state, None
 
@@ -125,10 +131,18 @@ class ParallelEnv(gym.Env):
         
         obs, state, act_mask, reward, done, info = results
 
-        obs = np.array(obs).reshape((-1,)+self.envs[0].observation_space.shape)
-        state = np.array(state).reshape((-1,)+self.envs[0].state_space.shape)
+        print(f"In step()")
+        print(f'Lens of obs: {len(obs), len(obs[0]), len(obs[0][0])}')
+        print(f'Obs: {obs}')
+        print(f'Shape of obs is: {np.array(obs).shape}')
+        print(f'obs_shape: {self.envs[0].observation_space[0].shape}')
+
+        obs = np.array(obs).reshape((-1,)+self.envs[0].observation_space[0].shape)
+        state = np.array(state).reshape((-1,)+self.envs[0].state_space[0].shape)
         reward = np.array(reward)
-        done = np.array(reward)       
+        done = np.array(reward) 
+
+        print(f'Shape of outgoing obs, state, reward, done: {obs.shape, state.shape, reward.shape, done.shape}')      
         
         return obs, state, None, reward, done, info
 
