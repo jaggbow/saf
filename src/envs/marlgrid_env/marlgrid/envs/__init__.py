@@ -309,7 +309,7 @@ register_marl_env(
 
 register_marl_env(
     "CoordinationGoaltile-5Agents-20Goals-2coordination-v1",
-    ClutteredGoalTileCoordinationEnv ,
+    ClutteredGoalTileCoordinationEnv,
     n_agents=5,
     grid_size=7,
     max_steps=150,

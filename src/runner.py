@@ -15,6 +15,7 @@ import torch
 class PGRunner:
     def __init__(self, train_env, eval_env, env_family, policy, buffer, params, device):
 
+        self.policy_type = policy.type
         self.total_timesteps = params.total_timesteps
         self.batch_size = params.rollout_threads * params.env_steps
         self.rollout_threads = params.rollout_threads
@@ -188,6 +189,15 @@ class PGRunner:
 
             with torch.no_grad():
                 
+                if self.policy_type =='conv':
+                    bs = next_obs.shape[0]
+                    n_ags = next_obs.shape[1]
+                    next_obs = next_obs.reshape((-1,)+self.policy.obs_shape)
+                    next_obs = self.policy.conv(next_obs)
+                    next_obs = next_obs.reshape(bs, n_ags, self.policy.input_shape)
+                    next_state = next_obs.reshape(bs, n_ags * self.policy.input_shape)
+                    next_state = next_state.unsqueeze(1).repeat(1, n_ags, 1)
+
                 next_value = self.policy.get_value(next_obs, next_state)
                 advantages, returns = self.policy.compute_returns(self.buffer, next_value, next_done)
                 
