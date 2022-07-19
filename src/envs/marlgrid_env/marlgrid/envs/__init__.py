@@ -277,6 +277,21 @@ register_marl_env(
 )
 
 register_marl_env(
+    "Goaltile-2Agents-100Goals-v0",
+    ClutteredGoalTileEnv,
+    n_agents=2,
+    grid_size=30,
+    max_steps=150,
+    view_size=7,
+    view_tile_size=1,
+    view_offset=1,
+    env_kwargs={
+        'clutter_density':0.1,
+        'n_bonus_tiles': 100,
+    }
+)
+
+register_marl_env(
     "Goaltile-20Agents-100Goals-v1",
     ClutteredGoalTileEnv,
     n_agents=20,

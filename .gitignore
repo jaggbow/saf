@@ -136,4 +136,5 @@ dmypy.json
 
 # misc
 main.py
+debug.py
 *.json

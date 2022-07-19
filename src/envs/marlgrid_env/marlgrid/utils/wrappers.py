@@ -48,7 +48,7 @@ class AddStateSpaceActMaskWrapper(gym.core.Wrapper):
         obs = self.env.reset()
         state = [agent_obs.flatten() for agent_obs in obs]
         state = np.concatenate(state)
-        state = [state.tolist() for _ in range(self.env.num_agents)]
+        state = [state for _ in range(self.env.num_agents)]
 
         return obs, state, None
     
@@ -56,7 +56,7 @@ class AddStateSpaceActMaskWrapper(gym.core.Wrapper):
         obs, reward, done, info = self.env.step(actions)
         state = [agent_obs.flatten() for agent_obs in obs]
         state = np.concatenate(state)
-        state = [state.tolist() for _ in range(self.env.num_agents)]
+        state = [state for _ in range(self.env.num_agents)]
 
         return obs, state, None, reward, done, info
 
@@ -67,7 +67,7 @@ def worker(conn, env):
         if cmd == "step":
             obs, state, act_mask, reward, done, info = env.step(data)
             if done:
-                obs = env.reset()
+                obs, state, act_mask = env.reset()
             conn.send((obs, state, act_mask, reward, done, info))
         elif cmd == "reset":
             obs, state, act_mask = env.reset()
@@ -117,31 +117,25 @@ class ParallelEnv(gym.Env):
         return obs, state, None
 
     def step(self, actions):
-
         actions = actions.reshape(-1, self.num_agents).tolist()
 
         i = 0
         for local, action in zip(self.locals, actions[1:]):
+            # print(f'Shape of actions to be communicated: {i, len(action)}')
+            # print(f'action: {action}')
             local.send(("step", action))
             i += 1
         obs, state, act_mask, reward, done, info = self.envs[0].step(actions[0])
         if done:
-            obs = self.envs[0].reset()
+            obs, state, act_mask = self.envs[0].reset()
         results = zip(*[(obs, state, act_mask, reward, done, info)] + [local.recv() for local in self.locals])
         
         obs, state, act_mask, reward, done, info = results
 
-        print(f"In step()")
-        print(f'Lens of obs: {len(obs), len(obs[0]), len(obs[0][0])}')
-        print(f'Shape of obs is: {np.array(obs).shape}')
-        print(f'obs_shape: {self.envs[0].observation_space[0].shape}')
-
         obs = np.array(obs).reshape((-1,)+self.envs[0].observation_space[0].shape)
         state = np.array(state).reshape((-1,)+self.envs[0].state_space[0].shape)
         reward = np.array(reward)
-        done = np.array(reward) 
-
-        print(f'Shape of outgoing obs, state, reward, done: {obs.shape, state.shape, reward.shape, done.shape}')      
+        done = np.expand_dims(np.array(done), axis=1).repeat(self.envs[0].num_agents, axis=1)   
         
         return obs, state, None, reward, done, info
 

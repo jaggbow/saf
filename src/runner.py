@@ -80,19 +80,14 @@ class PGRunner:
             action: [rollout_threads, n_agents] for Discrete type and [rollout_threads, n_agents, action_dim] for Box type
         '''
         
-        print(f'\n-------------------------------------\n')
-        print(f'Shape of action into env_step(): {action.shape}')
         if self.action_space.__class__.__name__ == 'Box':
             action_ = action.reshape(-1, action.shape[-1]).cpu().numpy()
         elif self.action_space.__class__.__name__ == 'Discrete':
             action_ = action.reshape(-1).cpu().numpy()
         else:
             raise NotImplementedError
-
-        print(f'Shape of action in env_step() after reshaping: {action_.shape}')
         
         obs, state, act_masks, reward, done, info = self.train_env.step(action_)
-        print(f'Shape of obs, state, reward, done out of env.step(): {obs.shape, state.shape, reward.shape, done.shape}')
         
         obs = torch.Tensor(obs).reshape((-1, self.n_agents)+obs.shape[1:]).to(self.device) # [rollout_threads, n_agents, obs_shape]
         state = torch.Tensor(state).reshape((-1, self.n_agents)+state.shape[1:]).to(self.device) # [rollout_threads, n_agents, state_shape]
@@ -101,8 +96,6 @@ class PGRunner:
         done = torch.Tensor(done).reshape((-1, self.n_agents)).to(self.device) # [rollout_threads, n_agents]
 
         reward = torch.Tensor(reward).reshape((-1, self.n_agents)).to(self.device) # [rollout_threads, n_agent]
-
-        print(f'Shape of obs, state, reward, done outgoing from env_step(): {obs.shape, state.shape, reward.shape, done.shape}')
 
         return obs, state, act_masks, reward, done, info
     
@@ -127,7 +120,7 @@ class PGRunner:
             nb_wins = np.zeros(self.rollout_threads)
 
             for step in range(self.env_steps):
-                print(f'Update Step: {update} | Env Step: {step}')
+                # print(f'Update Step: {update} | Env Step: {step}')
                 global_step += self.rollout_threads
 
                 with torch.no_grad():
