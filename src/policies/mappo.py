@@ -22,7 +22,7 @@ class MAPPO(nn.Module):
         super(MAPPO, self).__init__()
         # https://ppo-details.cleanrl.dev//2021/11/05/ppo-implementation-details/
         
-        self.type = type
+        self.type = params.type
         self.obs_shape = get_obs_shape(observation_space)
         self.state_shape = get_state_shape(state_space)
         self.action_shape = get_act_shape(action_space)
@@ -141,6 +141,7 @@ class MAPPO(nn.Module):
             value: [batch_size, n_agents]
         """
         
+        print(f'self.type is: {self.type}')
         if self.type == 'conv':
             bs = x.shape[0]
             n_ags = x.shape[1]

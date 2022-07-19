@@ -133,7 +133,6 @@ class ParallelEnv(gym.Env):
 
         print(f"In step()")
         print(f'Lens of obs: {len(obs), len(obs[0]), len(obs[0][0])}')
-        print(f'Obs: {obs}')
         print(f'Shape of obs is: {np.array(obs).shape}')
         print(f'obs_shape: {self.envs[0].observation_space[0].shape}')
 
