@@ -118,12 +118,12 @@ class IPPO(nn.Module):
             value: [batch_size, n_agents]
         """
         
-        if self.type == 'conv':
-            bs = x.shape[0]
-            n_ags = x.shape[1]
-            x = x.reshape((-1,)+self.obs_shape)
-            x = self.conv(x)
-            x = x.reshape(bs, n_ags, self.input_shape)
+        # if self.type == 'conv':
+        #     bs = x.shape[0]
+        #     n_ags = x.shape[1]
+        #     x = x.reshape((-1,)+self.obs_shape)
+        #     x = self.conv(x)
+        #     x = x.reshape(bs, n_ags, self.input_shape)
 
         values = []
         for i in range(self.n_agents): 
@@ -148,7 +148,7 @@ class IPPO(nn.Module):
             value: [batch_size, n_agents]
         """
         
-        value = self.get_value(x)
+
         
         if self.type == 'conv':
             bs = x.shape[0]
@@ -205,6 +205,7 @@ class IPPO(nn.Module):
         out_actions = torch.stack(out_actions, dim=1)
         logprobs = torch.stack(logprobs, dim=1)
         entropies = torch.stack(entropies, dim=1)
+        value = self.get_value(x)
         
         return out_actions, logprobs, entropies, value
     

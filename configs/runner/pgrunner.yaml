@@ -10,3 +10,4 @@ params:
   save_dir: $SCRATCH/saf/$SLURM_JOB_ID/
   comet:
     project_name: corl
+    experiment_name: test

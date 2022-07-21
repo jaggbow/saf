@@ -333,6 +333,24 @@ class Lava(WorldObj):
             fill_coords(img, point_in_line(0.7, yhi, 0.9, ylo, r=0.03), (0, 0, 0))
 
 
+
+
+class Background(WorldObj):
+    def __init__(self,  *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.color="red"
+    def can_overlap(self):
+        return True
+
+
+    def str_render(self, dir=0):
+        return "bb"
+
+    def render(self, img):
+        fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
+
+
 class Wall(BulkObj):
     def see_behind(self):
         return False

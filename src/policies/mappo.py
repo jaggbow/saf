@@ -119,14 +119,14 @@ class MAPPO(nn.Module):
             value: [batch_size, n_agents]
         """
         
-        print(f'Shape of x is: {x.shape}')
-        print(f'Shape of state is: {state.shape}')
+        # print(f'Shape of x is: {x.shape}')
+        # print(f'Shape of state is: {state.shape}')
         values = []
         for i in range(self.n_agents): 
             if self.shared_critic:
                 values.append(self.critic(state[:,0]))
             else:
-                print(f'Shape of state: {state.shape}')
+                # print(f'Shape of state: {state.shape}')
                 values.append(self.critic[i](state[:,0]))
         values = torch.stack(values, dim=1).squeeze(-1)
         return values
@@ -144,7 +144,7 @@ class MAPPO(nn.Module):
             value: [batch_size, n_agents]
         """
         
-        print(f'self.type is: {self.type}')
+        # print(f'self.type is: {self.type}')
         if self.type == 'conv':
             bs = x.shape[0]
             n_ags = x.shape[1]
@@ -265,9 +265,9 @@ class MAPPO(nn.Module):
         
         if hasattr(buffer, 'state'):
             b_state = buffer.state.reshape((-1, self.n_agents) + self.state_shape)
-            print(f'Hi')
+            #print(f'Hi')
         else:
-            print(f'Hi2')
+            #print(f'Hi2')
             b_state = None
 
         b_logprobs = buffer.logprobs.reshape(-1, self.n_agents)

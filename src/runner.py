@@ -42,8 +42,11 @@ class PGRunner:
             self.action_space = train_env.action_space
         
         if self.use_comet:
-            self.exp = comet_ml.Experiment(api_key="AIxlnGNX5bfAXGPOMAWbAymIz", project_name=params.comet.project_name)
-            self.exp.set_name(f"{policy.__class__.__name__}_{os.environ['SLURM_JOB_ID']}")
+            # self.exp = comet_ml.Experiment(api_key="AIxlnGNX5bfAXGPOMAWbAymIz", project_name=params.comet.project_name)
+            # self.exp.set_name(f"{policy.__class__.__name__}_{os.environ['SLURM_JOB_ID']}")
+            self.exp = comet_ml.Experiment(api_key="oHjAfUwAicWWeu3FMwDjhMYIl",project_name=params.comet.project_name)
+            self.exp.set_name(params.comet.experiment_name)
+
 
         self.train_env = train_env
         self.eval_env = eval_env
