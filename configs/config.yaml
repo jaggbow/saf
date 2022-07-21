@@ -12,3 +12,5 @@ n_agents: 3
 continuous_action: False
 env_steps: 25
 test_mode: False
+latent_kl : False
+use_policy_pool: False

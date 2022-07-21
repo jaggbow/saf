@@ -8,6 +8,7 @@ params:
   eval_episodes: 32
   checkpoint_dir: null
   save_dir: $SCRATCH/saf/$SLURM_JOB_ID/
+  latent_kl: ${latent_kl}
   comet:
     project_name: corl
     experiment_name: test
