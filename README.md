@@ -14,5 +14,9 @@ before running experiment, install the marlgrid environment by
  and 
  pip install -e .
  
+ change the comet API key to your own key:https://github.com/jaggbow/saf/blob/dfaf9b000a3178d0fac8d3920c691d500da51b44/src/runner.py#L47
  
+ 
+ 
+ The code to submit job to mila cluster is in Jobs_master.sh file
  
