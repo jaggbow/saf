@@ -116,6 +116,27 @@ class SAF(nn.Module):
                     np.array(self.action_shape).prod(), 
                     std=0.01,
                     activation=self.activation)
+        elif self.use_policy_pool:
+            if self.continuous_action:
+                
+                self.actor_mean = nn.ModuleList([MLP(
+                np.array(self.input_shape).prod(), 
+                [self.hidden_dim]*self.n_layers, 
+                np.array(self.action_shape).prod(), 
+                std=0.01,
+                activation=self.activation) for _ in range(self.n_policy)])
+                
+                self.actor_logstd = nn.ParameterList([
+                    nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod())) for _ in range(self.n_policy)])
+            else:
+
+                self.actor = nn.ModuleList([MLP(
+                    np.array(self.input_shape).prod(), 
+                    [self.hidden_dim]*self.n_layers, 
+                    np.array(self.action_shape).prod(), 
+                    std=0.01,
+                    activation=self.activation) for _ in range(self.n_policy)])
+
         else:
             if self.continuous_action:
                 
@@ -129,6 +150,7 @@ class SAF(nn.Module):
                 self.actor_logstd = nn.ParameterList([
                     nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod())) for _ in range(self.n_agents)])
             else:
+
                 self.actor = nn.ModuleList([MLP(
                     np.array(self.input_shape).prod(), 
                     [self.hidden_dim]*self.n_layers, 
@@ -207,6 +229,7 @@ class SAF(nn.Module):
         out_actions = []
         logprobs = []
         entropies = []
+      
         if self.use_policy_pool:
             # using policy pool
 
