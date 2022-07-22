@@ -32,3 +32,21 @@ env_steps=25 \
 rollout_threads=128 \
 runner.params.lr_decay=False 
 
+
+
+python run.py \
+policy=saf \
+policy.params.activation=tanh \
+policy.params.update_epochs=10 \
+policy.params.num_minibatches=1 \
+policy.params.learning_rate=0.0007 \
+policy.params.shared_actor=True \
+policy.params.shared_critic=True \
+policy.params.clip_vloss=True \
+env=simple_spread \
+n_agents=3 \
+seed=1\
+continuous_action=False \
+env_steps=25 \
+rollout_threads=128 \
+runner.params.lr_decay=False 

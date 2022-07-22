@@ -1,30 +1,35 @@
 #!/bin/bash
 
-#SBATCH --job-name=marlgrid_coordination
+#SBATCH --job-name=saf_marlgrid
 #SBATCH --partition=long                        
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:rtx8000:1
-#SBATCH --mem=70G                                     
-#SBATCH --time=6:00:00
+#SBATCH --mem=65G                                     
+#SBATCH --time=8:00:00
 #SBATCH --array=1-10
 
 
-#param_store=scripts/seeds.txt
-#seed=$(cat $param_store | awk -v var=$SLURM_ARRAY_TASK_ID 'NR==var {print $1}')
+
+
 env=$1
 N_agents=$2
 Method=$3
 coordination=$4
 heterogeneity=$5
-seed=$6
-ProjectName=$7
+use_policy_pool=$6
+latent_kl=$7
+seed=$8
+ProjectName=$9
 # 1. Load the required modules
 module --quiet load anaconda/3
 #conda activate marl
 conda activate PettingZoo
 
-ExpName=${env}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${Method}"_"${seed}
+ExpName=${env}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${Method}"|"${use_policy_pool}"|"${latent_kl}"_"${seed}
 echo "doing experiment: ${ExpName}"
+
+
+
 
 HYDRA_FULL_ERROR=1 python run.py \
 env=marlgrid  \
@@ -47,4 +52,7 @@ policy.params.shared_critic=False \
 policy.params.clip_vloss=True \
 runner.params.lr_decay=False \
 runner.params.comet.project_name=$ProjectName \
-runner.params.comet.experiment_name=${ExpName}
+runner.params.comet.experiment_name=${ExpName} \
+use_policy_pool=${use_policy_pool} \
+latent_kl=${latent_kl} \
+

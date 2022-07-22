@@ -145,6 +145,8 @@ class MAPPO(nn.Module):
         """
         
         # print(f'self.type is: {self.type}')
+
+
         if self.type == 'conv':
             bs = x.shape[0]
             n_ags = x.shape[1]
@@ -157,7 +159,8 @@ class MAPPO(nn.Module):
         out_actions = []
         logprobs = []
         entropies = []
-
+ 
+        
         for i in range(self.n_agents):
             if self.shared_actor:
                 if self.continuous_action:

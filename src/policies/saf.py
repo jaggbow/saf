@@ -213,17 +213,30 @@ class SAF(nn.Module):
         # print(f'self.type is: {self.type}')
         bs = x.shape[0]
         n_ags = x.shape[1]
+
+
         if self.type == 'conv':
             x = x.reshape((-1,)+self.obs_shape)
             x = self.conv(x)
             x = x.reshape(bs, n_ags, self.input_shape)
             state = x.reshape(bs, n_ags * self.input_shape)
             state = state.unsqueeze(1).repeat(1, n_ags, 1)
+            if x_old is not None and len(x_old.shape)==5:#use CNN if the x_old is not already processed
+      
+                bs_, n_ags_=x_old.shape[0],x_old.shape[1]
+                x_old = x_old.reshape((-1,)+self.obs_shape)
+                x_old = self.conv(x_old)
+                x_old = x_old.reshape(bs_, n_ags_, self.input_shape)
+
+
 
         if self.use_SK:
             # communicate among different agents using SK
             x_saf = self.SAF(x)
-            state = x_saf.reshape(bs, n_ags * self.input_shape[0])
+            if self.type == 'conv':
+                state = x_saf.reshape(bs, n_ags * self.input_shape)
+            else:
+                state = x_saf.reshape(bs, n_ags * self.input_shape[0])
             state = state.unsqueeze(1).repeat(1, n_ags, 1)
 
         out_actions = []
@@ -361,7 +374,7 @@ class SAF(nn.Module):
             logprobs = torch.stack(logprobs, dim=1)
             entropies = torch.stack(entropies, dim=1)
 
-        
+ 
         if self.latent_kl:
             z, KL = self.SAF.information_bottleneck(x_saf, x, x_old)
             value = self.get_value(x, state, z)
@@ -762,6 +775,8 @@ class Communication_and_policy(nn.Module):
         return attention_score
 
     def information_bottleneck(self, state_with_message, state_without_message, s_agent_previous_t):
+
+
         z_ = self.encoder(
             torch.cat((state_with_message, state_without_message), dim=2))
         mu, sigma = z_.chunk(2, dim=2)

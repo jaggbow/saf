@@ -7,7 +7,6 @@ from .cluttered import ClutteredMultiGrid
 from .goalcycle import ClutteredGoalCycleEnv
 from .goaltile import ClutteredGoalTileEnv
 from .viz_test import VisibilityTestEnv
-from .goaltile_coordination import ClutteredGoalTileCoordinationEnv
 from .goaltile_coordinationheterogeneity import ClutteredGoalTileCoordinationHeterogeneityEnv
 
 from ..agents import GridAgentInterface
@@ -76,7 +75,6 @@ def env_from_config(env_config, randomize_seed=True):
 def get_env_class(env_name):
     classes = {
         'ClutteredGoalTileEnv': ClutteredGoalTileEnv,
-        'ClutteredGoalTileCoordinationEnv': ClutteredGoalTileCoordinationEnv,
         'ClutteredGoalTileCoordinationHeterogeneityEnv': ClutteredGoalTileCoordinationHeterogeneityEnv,
     }
 
@@ -308,19 +306,3 @@ register_marl_env(
     }
 )
 
-
-register_marl_env(
-    "CoordinationGoaltile-5Agents-20Goals-2coordination-v1",
-    ClutteredGoalTileCoordinationEnv,
-    n_agents=5,
-    grid_size=7,
-    max_steps=150,
-    view_size=7,
-    view_tile_size=16,
-    view_offset=1,
-    env_kwargs={
-        'clutter_density':0.2,
-        'n_bonus_tiles': 20,
-        'coordination_level':2,
-    }
-)

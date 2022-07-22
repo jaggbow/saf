@@ -117,6 +117,7 @@ class PGRunner:
             raise NotImplementedError
         
         obs, state, act_masks, reward, done, info = self.train_env.step(action_)
+
         
         obs = torch.Tensor(obs).reshape((-1, self.n_agents)+obs.shape[1:]).to(self.device) # [rollout_threads, n_agents, obs_shape]
         state = torch.Tensor(state).reshape((-1, self.n_agents)+state.shape[1:]).to(self.device) # [rollout_threads, n_agents, state_shape]
@@ -144,6 +145,14 @@ class PGRunner:
             ## old_observation - shifted tensor (the zero-th obs is assumed to be equal to the first one)
             obs_old = obs.clone()
             obs_old[1:] = obs_old.clone()[:-1]
+
+            if self.policy_type =='conv':
+                bs = obs_old.shape[0]
+                n_ags = obs_old.shape[1]
+
+                obs_old = obs_old.reshape((-1,)+self.policy.obs_shape)
+                obs_old = self.policy.conv(obs_old)
+                obs_old = obs_old.reshape(bs, n_ags, self.policy.input_shape)
         else:
             obs_old = None
 
@@ -232,7 +241,7 @@ class PGRunner:
                 best_return = total_rewards
 
             with torch.no_grad():
-                
+     
                 if self.policy_type =='conv':
                     bs = next_obs.shape[0]
                     n_ags = next_obs.shape[1]
@@ -244,6 +253,7 @@ class PGRunner:
 
                 if self.latent_kl:
                     next_obs_saf = self.policy.SAF(next_obs)
+
                     next_z, _ = self.policy.SAF.information_bottleneck(next_obs_saf, next_obs, obs_old)
                 else:
                     next_z = None    
