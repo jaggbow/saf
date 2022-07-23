@@ -1,12 +1,12 @@
 #!/bin/bash
 
-#SBATCH --job-name=marlgrid_coordination
+#SBATCH --job-name=marlgrid_baseline
 #SBATCH --partition=long                        
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:rtx8000:1
 #SBATCH --mem=70G                                     
 #SBATCH --time=6:00:00
-#SBATCH --array=1-10
+
 
 
 #param_store=scripts/seeds.txt
@@ -36,6 +36,7 @@ seed=${seed} \
 n_agents=${N_agents} \
 env_steps=50 \
 env.params.num_goals=100 \
+experiment_name=${ExpName} \
 policy=${Method} \
 policy.params.type=conv \
 policy.params.activation=tanh \
@@ -46,5 +47,4 @@ policy.params.shared_actor=False \
 policy.params.shared_critic=False \
 policy.params.clip_vloss=True \
 runner.params.lr_decay=False \
-runner.params.comet.project_name=$ProjectName \
-runner.params.comet.experiment_name=${ExpName}
+runner.params.comet.project_name=$ProjectName

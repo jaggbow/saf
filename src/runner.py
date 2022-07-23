@@ -237,6 +237,7 @@ class PGRunner:
                     self.exp.log_metric("episodic_return", total_rewards, global_step)
             
             if total_rewards >= best_return:
+
                 self.save_checkpoints(self.save_dir)
                 best_return = total_rewards
 

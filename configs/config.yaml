@@ -14,3 +14,4 @@ env_steps: 25
 test_mode: False
 latent_kl : False
 use_policy_pool: False
+experiment_name: test

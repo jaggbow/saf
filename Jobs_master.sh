@@ -54,9 +54,10 @@
 
 
 
-# # #different baselines at different levels of heterogeneity for marlgrid
+# # # #different baselines at different levels of heterogeneity for marlgrid
 
 # ProjectName="differnet_heterogeneity_levels_baselines2"
+# #ProjectName="test"
 
 
 # declare -a All_Envs=("ClutteredGoalTileCoordinationHeterogeneityEnv")
@@ -120,10 +121,7 @@ declare -a All_coordination=(1 2 3 4 5)
 
 declare -a All_heterogeneity=(1)
 
-
-
 declare -a All_use_policy_pool=(True False)
-
 
 declare -a All_latent_kl=(True False)
 

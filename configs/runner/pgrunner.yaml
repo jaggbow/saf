@@ -7,8 +7,9 @@ params:
   n_agents: ${n_agents}
   eval_episodes: 32
   checkpoint_dir: null
-  save_dir: $SCRATCH/saf/$SLURM_JOB_ID/
+  experiment_name: ${experiment_name}
+  save_dir: $SCRATCH/saved_model/${experiment_name}/
   latent_kl: ${latent_kl}
   comet:
     project_name: corl
-    experiment_name: test
+    experiment_name: ${experiment_name}

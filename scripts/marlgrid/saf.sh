@@ -6,7 +6,7 @@
 #SBATCH --gres=gpu:rtx8000:1
 #SBATCH --mem=65G                                     
 #SBATCH --time=8:00:00
-#SBATCH --array=1-10
+
 
 
 
@@ -25,7 +25,7 @@ module --quiet load anaconda/3
 #conda activate marl
 conda activate PettingZoo
 
-ExpName=${env}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${Method}"|"${use_policy_pool}"|"${latent_kl}"_"${seed}
+ExpName=${env}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${Method}"-"${use_policy_pool}"-"${latent_kl}"_"${seed}
 echo "doing experiment: ${ExpName}"
 
 
@@ -41,6 +41,7 @@ seed=${seed} \
 n_agents=${N_agents} \
 env_steps=50 \
 env.params.num_goals=100 \
+experiment_name=${ExpName} \
 policy=${Method} \
 policy.params.type=conv \
 policy.params.activation=tanh \
@@ -52,7 +53,6 @@ policy.params.shared_critic=False \
 policy.params.clip_vloss=True \
 runner.params.lr_decay=False \
 runner.params.comet.project_name=$ProjectName \
-runner.params.comet.experiment_name=${ExpName} \
 use_policy_pool=${use_policy_pool} \
 latent_kl=${latent_kl} \
 
