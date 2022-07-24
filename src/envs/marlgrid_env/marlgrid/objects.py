@@ -265,12 +265,11 @@ class GoalTeam(WorldObj):
         self.state = True
         self.coordination=coordination
 
-
     def can_overlap(self):
         return True
 
     def get_reward(self, agent):
-        if self.state and len(self.agents)>=self.coordination:#this reward can only be collected if k agents are on it simutaneously
+        if self.state and len(self.agents) >= self.coordination: # this reward can only be collected if k agents are on it simutaneously
             self.state = False
             self.color = "black"
             return self.reward
@@ -282,6 +281,7 @@ class GoalTeam(WorldObj):
 
     def render(self, img):
         fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
+
 class Floor(WorldObj):
     def can_overlap(self):
         return True# and self.agent is None
@@ -309,7 +309,6 @@ class EmptySpace(WorldObj):
     def str_render(self, dir=0):
         return "  "
 
-
 class Lava(WorldObj):
     def can_overlap(self):
         return True# and self.agent is None
@@ -332,17 +331,13 @@ class Lava(WorldObj):
             fill_coords(img, point_in_line(0.5, ylo, 0.7, yhi, r=0.03), (0, 0, 0))
             fill_coords(img, point_in_line(0.7, yhi, 0.9, ylo, r=0.03), (0, 0, 0))
 
-
-
-
 class Background(WorldObj):
     def __init__(self,  *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
         self.color="red"
+
     def can_overlap(self):
         return True
-
 
     def str_render(self, dir=0):
         return "bb"
@@ -360,7 +355,6 @@ class Wall(BulkObj):
 
     def render(self, img):
         fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
-
 
 class Key(WorldObj):
     def can_pickup(self):
@@ -393,7 +387,6 @@ class Ball(WorldObj):
 
     def render(self, img):
         fill_coords(img, point_in_circle(0.5, 0.5, 0.31), COLORS[self.color])
-
 
 class Door(WorldObj):
     states = IntEnum("door_state", "open closed locked")
@@ -442,7 +435,6 @@ class Door(WorldObj):
 
             # Draw door handle
             fill_coords(img, point_in_circle(cx=0.75, cy=0.50, r=0.08), c)
-
 
 class Box(WorldObj):
     def __init__(self, color=0, state=0, contains=None):
