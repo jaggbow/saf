@@ -29,6 +29,20 @@ class PermuteObsWrapper(gym.core.ObservationWrapper):
         obs = [obs.transpose(2, 0, 1) for obs in obs]
         return obs, reward, done, info
 
+class CooperativeRewardsWrapper(gym.core.Wrapper):
+    # Wrapper to distribute the total rewards collected by all the agents equally among all the agents
+    # This can promote cooperative behaviour among the agents
+    def __init__(self, env):
+        super().__init__(env)
+
+    def step(self, actions):
+        obs, reward, done, info = self.env.step(actions)
+        avg_reward = sum(reward) / len(reward)
+        reward = [avg_reward for _ in range(self.env.num_agents)]
+
+        return obs, reward, done, info
+
+
 class AddStateSpaceActMaskWrapper(gym.core.Wrapper):
     def __init__(self, env):
         super().__init__(env)
