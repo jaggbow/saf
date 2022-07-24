@@ -5,7 +5,7 @@ from .vector.vector_constructors import (
     concat_vec_envs_v1,
     pettingzoo_env_to_vec_env_v1,
 )
-from marlgrid.utils.wrappers import PermuteObsWrapper, ParallelEnv, AddStateSpaceActMaskWrapper
+from marlgrid.utils.wrappers import PermuteObsWrapper, ParallelEnv, AddStateSpaceActMaskWrapper, CooperativeRewardsWrapper
 
 def get_env(env_name, family, params):
     if family == 'mpe':

@@ -15,7 +15,7 @@ import hydra
 from omegaconf import DictConfig
 
 from src.envs import get_env
-from src.envs import ObstoStateWrapper, pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1, black_death_v3, PermuteObsWrapper, AddStateSpaceActMaskWrapper, ParallelEnv
+from src.envs import ObstoStateWrapper, pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1, black_death_v3, PermuteObsWrapper, AddStateSpaceActMaskWrapper, CooperativeRewardsWrapper, ParallelEnv
 from src.replay_buffer import ReplayBuffer, ReplayBufferImageObs
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -25,7 +25,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 def make_train_env(env_config):
     
     if env_config.family == 'marlgrid':
-        envs = [AddStateSpaceActMaskWrapper(PermuteObsWrapper(get_env(env_config.name, env_config.family, env_config.params))) for _ in range(env_config.rollout_threads)]
+        envs = [AddStateSpaceActMaskWrapper(PermuteObsWrapper(CooperativeRewardsWrapper(get_env(env_config.name, env_config.family, env_config.params)))) for _ in range(env_config.rollout_threads)]
         env = ParallelEnv(envs)
         return env
     
