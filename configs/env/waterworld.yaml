@@ -2,6 +2,7 @@ name: waterworld
 family: sisl
 rollout_threads: ${rollout_threads}
 continuous_action: True
+obs_type: vector
 params: 
   n_pursuers: ${n_agents}
   n_evaders: 5

@@ -1,5 +1,6 @@
 import random
 import os
+import warnings
 
 import comet_ml
 import supersuit as ss
@@ -14,13 +15,21 @@ import hydra
 from omegaconf import DictConfig
 
 from src.envs import get_env
-from src.envs import ObstoStateWrapper, pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1, black_death_v3
-from src.replay_buffer import ReplayBuffer
+from src.envs import ObstoStateWrapper, pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1, black_death_v3, PermuteObsWrapper, AddStateSpaceActMaskWrapper, CooperativeRewardsWrapper,ParallelEnv
+from src.replay_buffer import ReplayBuffer, ReplayBufferImageObs
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 
 def make_train_env(env_config):
     
-    env_class = get_env(env_config.name, env_config.family)
+    if env_config.family == 'marlgrid':
+        envs = [AddStateSpaceActMaskWrapper(PermuteObsWrapper(CooperativeRewardsWrapper(get_env(env_config.name, env_config.family, env_config.params)))) for _ in range(env_config.rollout_threads)]
+        env = ParallelEnv(envs)
+        return env
+    
+    env_class = get_env(env_config.name, env_config.family, env_config.params)
     env = env_class.parallel_env(**env_config.params)
     
     if env_config.continuous_action:
@@ -30,7 +39,9 @@ def make_train_env(env_config):
         env = ss.pad_action_space_v0(env)
     else:
         env = black_death_v3(env)
+
     env = ObstoStateWrapper(env)
+    
     if env_config.family == 'starcraft':
         env = pettingzoo_env_to_vec_env_v1(env, black_death=True)
     else:
@@ -41,7 +52,13 @@ def make_train_env(env_config):
 
 def make_eval_env(env_config):
     
-    env_class = get_env(env_config.name, env_config.family)
+    if env_config.family == 'marlgrid':
+        envs = [AddStateSpaceActMaskWrapper(PermuteObsWrapper(get_env(env_config.name, env_config.family, env_config.params))) for _ in range(env_config.rollout_threads)]
+        env = ParallelEnv(envs)
+        return env
+
+    env_class = get_env(env_config.name, env_config.family, env_config.params)
+
     env = env_class.parallel_env(**env_config.params)
     
     if env_config.continuous_action:
@@ -69,17 +86,42 @@ def main(cfg: DictConfig):
 
     if isinstance(train_envs.observation_space, spaces.Dict):
         observation_space = train_envs.observation_space['observation']
+    elif isinstance(train_envs.observation_space, tuple):
+        observation_space = train_envs.observation_space[0]
     else:
         observation_space = train_envs.observation_space
+
+    if isinstance(train_envs.action_space, tuple):
+        action_space = train_envs.action_space[0]
+    else:
+        action_space = train_envs.action_space
+
+    if cfg.env.obs_type == 'image' and cfg.policy.params.type == 'conv':
+        state_space = spaces.Box(
+            low=-float('inf'),
+            high=float('inf'),
+            shape=(cfg.policy.params.conv_out_size * cfg.n_agents,),
+            dtype='float',
+        )
+    elif isinstance(train_envs.state_space, tuple):
+        state_space = train_envs.state_space[0]
+    else:
+        state_space = train_envs.state_space
 
     policy = hydra.utils.instantiate(
         cfg.policy, 
         observation_space=observation_space, 
-        action_space=train_envs.action_space, 
-        state_space=train_envs.state_space, 
+        action_space=action_space, 
+        state_space=state_space, 
         params=cfg.policy.params)
+    
     policy = policy.to(device)
-    buffer = ReplayBuffer(observation_space, train_envs.action_space, train_envs.state_space, cfg.buffer, device)
+    
+    if cfg.env.obs_type == 'image' and cfg.policy.params.type == 'conv':
+        buffer = ReplayBufferImageObs(observation_space, action_space, cfg.buffer, device)
+    else:
+        buffer = ReplayBuffer(observation_space, action_space, state_space, cfg.buffer, device)
+        
     runner = hydra.utils.instantiate(
         cfg.runner,
         train_env=train_envs,

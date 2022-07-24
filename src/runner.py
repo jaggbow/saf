@@ -5,6 +5,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from gym import spaces
+
 from tqdm import tqdm
 import comet_ml
 
@@ -12,7 +14,8 @@ import torch
 
 class PGRunner:
     def __init__(self, train_env, eval_env, env_family, policy, buffer, params, device):
-        
+
+        self.policy_type = policy.type
         self.total_timesteps = params.total_timesteps
         self.batch_size = params.rollout_threads * params.env_steps
         self.rollout_threads = params.rollout_threads
@@ -21,12 +24,22 @@ class PGRunner:
         self.lr_decay = params.lr_decay
         self.env_family = env_family
         self.eval_episodes = params.eval_episodes
-        self.observation_space = train_env.observation_space
-        self.action_space = train_env.action_space
         self.use_comet = True if params.comet else False
         self.checkpoint_dir = params.checkpoint_dir
         self.save_dir = Path(expandvars(expanduser(str(params.save_dir)))).resolve()
         self.save_dir.mkdir(parents=True, exist_ok=True)
+
+        if isinstance(train_env.observation_space, spaces.Dict):
+            self.observation_space = train_env.observation_space['observation']
+        elif isinstance(train_env.observation_space, tuple):
+            self.observation_space = train_env.observation_space[0]
+        else:
+            self.observation_space = train_env.observation_space
+
+        if isinstance(train_env.action_space, tuple):
+            self.action_space = train_env.action_space[0]
+        else:
+            self.action_space = train_env.action_space
         
         if self.use_comet:
             self.exp = comet_ml.Experiment(project_name=params.comet.project_name)
@@ -67,12 +80,13 @@ class PGRunner:
         Args:
             action: [rollout_threads, n_agents] for Discrete type and [rollout_threads, n_agents, action_dim] for Box type
         '''
+        
         if self.action_space.__class__.__name__ == 'Box':
             action_ = action.reshape(-1, action.shape[-1]).cpu().numpy()
         elif self.action_space.__class__.__name__ == 'Discrete':
             action_ = action.reshape(-1).cpu().numpy()
         else:
-            NotImplementedError
+            raise NotImplementedError
         
         obs, state, act_masks, reward, done, info = self.train_env.step(action_)
         
@@ -107,6 +121,7 @@ class PGRunner:
             nb_wins = np.zeros(self.rollout_threads)
 
             for step in range(self.env_steps):
+                # print(f'Update Step: {update} | Env Step: {step}')
                 global_step += self.rollout_threads
 
                 with torch.no_grad():
@@ -114,16 +129,27 @@ class PGRunner:
 
                 next_obs, next_state, next_act_masks, reward, done, info = self.env_step(action)
 
-                self.buffer.insert(
-                    obs,
-                    state,
-                    act_masks,
-                    action, 
-                    logprob, 
-                    reward, 
-                    value, 
-                    next_done, 
-                    step)
+                if len(self.observation_space.shape) == 3:
+                    self.buffer.insert(
+                        obs,
+                        act_masks,
+                        action,
+                        logprob,
+                        reward,
+                        value,
+                        next_done,
+                        step) 
+                else:
+                    self.buffer.insert(
+                        obs,
+                        state,
+                        act_masks,
+                        action,
+                        logprob,
+                        reward,
+                        value,
+                        next_done,
+                        step)
                 
                 if self.env_family == 'starcraft':
                     total_rewards += reward.max(-1)[0] # (rollout_threads,)
@@ -162,7 +188,6 @@ class PGRunner:
                 best_return = total_rewards
 
             with torch.no_grad():
-                
                 next_value = self.policy.get_value(next_obs, next_state)
                 advantages, returns = self.policy.compute_returns(self.buffer, next_value, next_done)
                 

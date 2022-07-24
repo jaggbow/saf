@@ -2,6 +2,7 @@ name: simple_reference
 family: mpe
 rollout_threads: ${rollout_threads}
 continuous_action: ${continuous_action}
+obs_type: vector
 params: 
   local_ratio: 0.5
   max_cycles: ${env_steps}

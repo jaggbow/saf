@@ -7,6 +7,8 @@ from torch.distributions.categorical import Categorical
 from torch.distributions.normal import Normal
 
 from src.architectures.mlp import MLP
+from src.architectures.cnn import CNN
+
 from src.utils import *
 
 
@@ -20,6 +22,8 @@ class IPPO(nn.Module):
     def __init__(self, observation_space, action_space, state_space, params):
         super(IPPO, self).__init__()
         # https://ppo-details.cleanrl.dev//2021/11/05/ppo-implementation-details/
+        
+        self.type = params.type
         self.obs_shape = get_obs_shape(observation_space)
         self.state_shape = get_state_shape(state_space)
         self.action_shape = get_act_shape(action_space)
@@ -46,16 +50,23 @@ class IPPO(nn.Module):
         self.target_kl = params.target_kl
         self.update_epochs = params.update_epochs
 
+        if self.type == 'conv':
+            assert len(self.obs_shape) == 3, 'Convolutional policy cannot be used for non-image observations!'
+            self.conv = CNN(out_size=params.conv_out_size)
+            self.input_shape = params.conv_out_size
+        else:
+            self.input_shape = self.obs_shape
+        
         if self.shared_critic:
             self.critic = MLP(
-                np.array(self.obs_shape).prod(), 
+                np.array(self.input_shape).prod(), 
                 [self.hidden_dim]*self.n_layers, 
                 1, 
                 std=1.0,
                 activation=self.activation)
         else:
             self.critic = nn.ModuleList([MLP(
-                np.array(self.obs_shape).prod(), 
+                np.array(self.input_shape).prod(), 
                 [self.hidden_dim]*self.n_layers, 
                 1, 
                 std=1.0,
@@ -64,7 +75,7 @@ class IPPO(nn.Module):
         if self.shared_actor:
             if self.continuous_action:
                 self.actor_mean = MLP(
-                np.array(self.obs_shape).prod(), 
+                np.array(self.input_shape).prod(), 
                 [self.hidden_dim]*self.n_layers, 
                 np.array(self.action_shape).prod(), 
                 std=0.01,
@@ -72,7 +83,7 @@ class IPPO(nn.Module):
                 self.actor_logstd = nn.ParameterList([nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod()))])
             else:
                 self.actor = MLP(
-                    np.array(self.obs_shape).prod(), 
+                    np.array(self.input_shape).prod(), 
                     [self.hidden_dim]*self.n_layers, 
                     np.array(self.action_shape).prod(), 
                     std=0.01,
@@ -81,7 +92,7 @@ class IPPO(nn.Module):
             if self.continuous_action:
                 
                 self.actor_mean = nn.ModuleList([MLP(
-                np.array(self.obs_shape).prod(), 
+                np.array(self.input_shape).prod(), 
                 [self.hidden_dim]*self.n_layers, 
                 np.array(self.action_shape).prod(), 
                 std=0.01,
@@ -90,7 +101,7 @@ class IPPO(nn.Module):
                     nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod())) for _ in range(self.n_agents)])
             else:
                 self.actor = nn.ModuleList([MLP(
-                    np.array(self.obs_shape).prod(), 
+                    np.array(self.input_shape).prod(), 
                     [self.hidden_dim]*self.n_layers, 
                     np.array(self.action_shape).prod(), 
                     std=0.01,
@@ -106,6 +117,14 @@ class IPPO(nn.Module):
         Returns:
             value: [batch_size, n_agents]
         """
+        
+        if self.type == 'conv':
+            bs = x.shape[0]
+            n_ags = x.shape[1]
+            x = x.reshape((-1,)+self.obs_shape)
+            x = self.conv(x)
+            x = x.reshape(bs, n_ags, self.input_shape)
+
         values = []
         for i in range(self.n_agents): 
             if self.shared_critic:
@@ -128,9 +147,20 @@ class IPPO(nn.Module):
             entropy: [batch_size, n_agents]
             value: [batch_size, n_agents]
         """
+        
+        value = self.get_value(x)
+        
+        if self.type == 'conv':
+            bs = x.shape[0]
+            n_ags = x.shape[1]
+            x = x.reshape((-1,)+self.obs_shape)
+            x = self.conv(x)
+            x = x.reshape(bs, n_ags, self.input_shape)
+           
         out_actions = []
         logprobs = []
         entropies = []
+        
         for i in range(self.n_agents):
             if self.shared_actor:
                 if self.continuous_action:
@@ -150,6 +180,7 @@ class IPPO(nn.Module):
                     logits = self.actor[i](x[:,i])
                     if type(action_mask) == torch.Tensor:
                         logits[action_mask[:,i]==0] = -1e18
+            
             if self.continuous_action:
                 probs = Normal(action_mean, action_std)
             else:
@@ -174,7 +205,6 @@ class IPPO(nn.Module):
         out_actions = torch.stack(out_actions, dim=1)
         logprobs = torch.stack(logprobs, dim=1)
         entropies = torch.stack(entropies, dim=1)
-        value = self.get_value(x)
         
         return out_actions, logprobs, entropies, value
     
