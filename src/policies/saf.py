@@ -450,7 +450,7 @@ class SAF(nn.Module):
             #print(f'Hi2')
             b_state = None
 
-        KL = 0
+        
         if self.latent_kl:
             # old_observation - shifted tensor (the zero-th obs is assumed to be equal to the first one)
             b_obs_old = b_obs.clone()
@@ -482,14 +482,14 @@ class SAF(nn.Module):
 
                 if b_state is not None:
                     if self.continuous_action:
-                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], None, b_actions[mb_inds], b_obs_old)
+                        _, newlogprob, entropy, newvalue, KL = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], None, b_actions[mb_inds], b_obs_old)
                     else:
-                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], b_action_masks[mb_inds], b_actions.long()[mb_inds], b_obs_old)
+                        _, newlogprob, entropy, newvalue, KL = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], b_action_masks[mb_inds], b_actions.long()[mb_inds], b_obs_old)
                 else:
                     if self.continuous_action:
-                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], None, None, b_actions[mb_inds], b_obs_old)
+                        _, newlogprob, entropy, newvalue, KL = self.get_action_and_value(b_obs[mb_inds], None, None, b_actions[mb_inds], b_obs_old)
                     else:
-                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], None, b_action_masks[mb_inds], b_actions.long()[mb_inds], b_obs_old)
+                        _, newlogprob, entropy, newvalue, KL= self.get_action_and_value(b_obs[mb_inds], None, b_action_masks[mb_inds], b_actions.long()[mb_inds], b_obs_old)
                 
 
                 logratio = newlogprob - b_logprobs[mb_inds]
@@ -534,10 +534,9 @@ class SAF(nn.Module):
                 loss = pg_loss - self.ent_coef * entropy_loss + v_loss * self.vf_coef
 
                 self.optimizer.zero_grad()
-                if self.latent_kl:
-                    (loss+KL).backward()
-                else:
-                    loss.backward()
+               
+                (loss+KL).backward()
+                
                 nn.utils.clip_grad_norm_(self.parameters(), self.max_grad_norm)
                 self.optimizer.step()
 
