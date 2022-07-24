@@ -18,6 +18,7 @@ class PGRunner:
         self.policy_type = policy.type
         self.total_timesteps = params.total_timesteps
         self.batch_size = params.rollout_threads * params.env_steps
+        self.latent_kl = params.latent_kl
         self.rollout_threads = params.rollout_threads
         self.n_agents = params.n_agents
         self.env_steps = params.env_steps
@@ -41,12 +42,6 @@ class PGRunner:
         else:
             self.action_space = train_env.action_space
         
-        if self.use_comet:
-            # self.exp = comet_ml.Experiment(api_key="AIxlnGNX5bfAXGPOMAWbAymIz", project_name=params.comet.project_name)
-            # self.exp.set_name(f"{policy.__class__.__name__}_{os.environ['SLURM_JOB_ID']}")
-            self.exp = comet_ml.Experiment(api_key="oHjAfUwAicWWeu3FMwDjhMYIl",project_name=params.comet.project_name)
-            self.exp.set_name(params.comet.experiment_name)
-
 
         self.train_env = train_env
         self.eval_env = eval_env
@@ -57,6 +52,36 @@ class PGRunner:
         if self.checkpoint_dir:
             print("Resuming training from", self.checkpoint_dir)
             self.load_checkpoints(self.checkpoint_dir)
+            if self.use_comet:
+                api_key_path= Path(self.checkpoint_dir)/Path('apy_key.txt')
+                with open(api_key_path) as f:
+                    #self.exp = comet_ml.Experiment(api_key="qXdTq22JXVov2VvqWgZBj4eRr",project_name=params.comet.project_name)
+                    self.exp_api_key = f.readlines()
+                # Check to see if there is a key in environment:
+                EXPERIMENT_KEY = os.environ.get("COMET_EXPERIMENT_KEY", self.exp_api_key[0])
+
+                # First, let's see if we continue or start fresh:
+                if (EXPERIMENT_KEY is not None):
+                    # There is one, but the experiment might not exist yet:
+                    api = comet_ml.API(api_key="qXdTq22JXVov2VvqWgZBj4eRr") # Assumes API key is set in config/env
+                    try:
+                        api_experiment = api.get_experiment_by_key(EXPERIMENT_KEY)
+                    except Exception:
+                        api_experiment = None
+                    if api_experiment is not None:
+                        CONTINUE_RUN = True
+                        # We can get the last details logged here, if logged:
+                        self.step = int(api_experiment.get_parameters_summary("curr_step")["valueCurrent"])
+                    
+        else: 
+            if self.use_comet:
+                # self.exp = comet_ml.Experiment(api_key="AIxlnGNX5bfAXGPOMAWbAymIz", project_name=params.comet.project_name)
+                # self.exp.set_name(f"{policy.__class__.__name__}_{os.environ['SLURM_JOB_ID']}")
+                self.exp = comet_ml.Experiment(api_key="oHjAfUwAicWWeu3FMwDjhMYIl",project_name=params.comet.project_name)
+                self.exp.set_name(params.comet.experiment_name)
+                self.exp_key = self.exp.get_key()
+            
+           
             
     def env_reset(self):
         '''
@@ -92,6 +117,7 @@ class PGRunner:
             raise NotImplementedError
         
         obs, state, act_masks, reward, done, info = self.train_env.step(action_)
+
         
         obs = torch.Tensor(obs).reshape((-1, self.n_agents)+obs.shape[1:]).to(self.device) # [rollout_threads, n_agents, obs_shape]
         state = torch.Tensor(state).reshape((-1, self.n_agents)+state.shape[1:]).to(self.device) # [rollout_threads, n_agents, state_shape]
@@ -114,6 +140,30 @@ class PGRunner:
         num_updates = self.total_timesteps // self.batch_size
         best_return = -1e9
         
+
+        if self.latent_kl:
+            ## old_observation - shifted tensor (the zero-th obs is assumed to be equal to the first one)
+            obs_old = obs.clone()
+            obs_old[1:] = obs_old.clone()[:-1]
+
+            if self.policy_type =='conv':
+                bs = obs_old.shape[0]
+                n_ags = obs_old.shape[1]
+
+                obs_old = obs_old.reshape((-1,)+self.policy.obs_shape)
+                obs_old = self.policy.conv(obs_old)
+                obs_old = obs_old.reshape(bs, n_ags, self.policy.input_shape)
+        else:
+            obs_old = None
+
+        if not os.path.exists(self.save_dir):
+
+                os.chdir(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
+                os.makedirs(self.save_dir, exist_ok = True)
+                api_key_path= Path(self.save_dir)/Path('apy_key.txt')
+                with open(api_key_path, 'w') as f:
+                    f.write(self.exp_key)
+
         for update in range(1, num_updates + 1):
             if self.lr_decay:
                 self.policy.update_lr(update, num_updates)
@@ -128,7 +178,7 @@ class PGRunner:
                 global_step += self.rollout_threads
 
                 with torch.no_grad():
-                    action, logprob, _, value = self.policy.get_action_and_value(obs, state, act_masks)
+                    action, logprob, _, value, _ = self.policy.get_action_and_value(obs, state, act_masks, None, obs_old)
 
                 next_obs, next_state, next_act_masks, reward, done, info = self.env_step(action)
 
@@ -187,11 +237,12 @@ class PGRunner:
                     self.exp.log_metric("episodic_return", total_rewards, global_step)
             
             if total_rewards >= best_return:
+
                 self.save_checkpoints(self.save_dir)
                 best_return = total_rewards
 
             with torch.no_grad():
-                
+     
                 if self.policy_type =='conv':
                     bs = next_obs.shape[0]
                     n_ags = next_obs.shape[1]
@@ -201,7 +252,14 @@ class PGRunner:
                     next_state = next_obs.reshape(bs, n_ags * self.policy.input_shape)
                     next_state = next_state.unsqueeze(1).repeat(1, n_ags, 1)
 
-                next_value = self.policy.get_value(next_obs, next_state)
+                if self.latent_kl:
+                    next_obs_saf = self.policy.SAF(next_obs)
+
+                    next_z, _ = self.policy.SAF.information_bottleneck(next_obs_saf, next_obs, obs_old)
+                else:
+                    next_z = None    
+
+                next_value = self.policy.get_value(next_obs, next_state, next_z)
                 advantages, returns = self.policy.compute_returns(self.buffer, next_value, next_done)
                 
 
@@ -212,6 +270,8 @@ class PGRunner:
                 
                 self.exp.log_metric("learning_rate", self.policy.optimizer.param_groups[0]["lr"], global_step)
                 self.exp.log_metric("SPS", int(global_step / (time.time() - start_time)), global_step)
+
+            
     
     def evaluate(self):
 
@@ -234,8 +294,15 @@ class PGRunner:
                 state = torch.stack(state, dim=0).unsqueeze(0).to(self.device)
                 act_mask = torch.stack(act_mask, dim=0).unsqueeze(0).to(self.device)
 
+                if self.latent_kl:
+                    ## old_observation - shifted tensor (the zero-th obs is assumed to be equal to the first one)
+                    obs_old = obs.clone()
+                    obs_old[1:] = obs_old.clone()[:-1]
+                else:
+                    obs_old = None
+
                 with torch.no_grad():
-                    action_, _, _, _ = self.policy.get_action_and_value(obs, state, act_mask)
+                    action_, _, _, _, _ = self.policy.get_action_and_value(obs, state, act_mask, None, obs_old)
                     if self.action_space.__class__.__name__ == 'Box':
                         action_ = action_.reshape(-1, action_.shape[-1]).cpu().numpy()
                     elif self.action_space.__class__.__name__ == 'Discrete':

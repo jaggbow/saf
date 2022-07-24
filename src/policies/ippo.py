@@ -109,7 +109,7 @@ class IPPO(nn.Module):
         
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5)
 
-    def get_value(self, x, state=None):
+    def get_value(self, x, state=None, z=None):
         """
         Args:
             x: [batch_size, n_agents, obs_shape]
@@ -134,7 +134,7 @@ class IPPO(nn.Module):
         values = torch.stack(values, dim=1).squeeze(-1)
         return values
 
-    def get_action_and_value(self, x, state=None, action_mask=None, actions=None):
+    def get_action_and_value(self, x, state=None, action_mask=None, actions=None, obs_old=None):
         """
         Args:
             x: [batch_size, n_agents, obs_shape]
@@ -207,7 +207,7 @@ class IPPO(nn.Module):
         entropies = torch.stack(entropies, dim=1)
         value = self.get_value(x)
         
-        return out_actions, logprobs, entropies, value
+        return out_actions, logprobs, entropies, value, None
     
     def update_lr(self, step, total_steps):
         frac = 1.0 - (step - 1.0) / total_steps
@@ -286,9 +286,9 @@ class IPPO(nn.Module):
                 mb_inds = b_inds[start:end]
                 
                 if self.continuous_action:
-                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, None, b_actions[mb_inds])
+                    _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], None, None, b_actions[mb_inds])
                 else:
-                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, b_action_masks[mb_inds], b_actions.long()[mb_inds])
+                    _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], None, b_action_masks[mb_inds], b_actions.long()[mb_inds])
                 
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()

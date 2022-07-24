@@ -30,25 +30,7 @@ def get_env(env_name, family, params):
         env_instance_name = f'{env_name[9:-3]}-{params.N}Agents-{params.num_goals}Goals-v0'
         env_class = get_env_class(env_name)
 
-        if env_name=="ClutteredGoalTileCoordinationEnv":
-            
-            register_marl_env(
-                env_instance_name,
-                env_class,
-                n_agents=params.N,
-                grid_size=params.grid_size,
-                max_steps=params.max_steps,
-                view_size=params.view_size,
-                view_tile_size=params.view_tile_size,
-                view_offset=1,
-                env_kwargs={
-                    'clutter_density': params.clutter_density,
-                    'n_bonus_tiles': params.num_goals,
-                    'coordination_level':params.coordination,
-                }
-            )
-
-        elif env_name=="ClutteredGoalTileCoordinationHeterogeneityEnv":
+        if env_name=="ClutteredGoalTileCoordinationHeterogeneityEnv":
             
             register_marl_env(
                 env_instance_name,

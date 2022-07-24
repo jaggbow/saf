@@ -13,5 +13,5 @@ params:
   view_size: 7
   view_tile_size: 4
   clutter_density: 0.1
-  coordination: 2
-  heterogeneity: 4
+  coordination: 1
+  heterogeneity: 1

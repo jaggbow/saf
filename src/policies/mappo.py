@@ -110,7 +110,7 @@ class MAPPO(nn.Module):
         
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5)
 
-    def get_value(self, x, state):
+    def get_value(self, x, state, z=None):
         """
         Args:
             x: [batch_size, n_agents, obs_shape]
@@ -131,7 +131,7 @@ class MAPPO(nn.Module):
         values = torch.stack(values, dim=1).squeeze(-1)
         return values
 
-    def get_action_and_value(self, x, state, action_mask=None, actions=None):
+    def get_action_and_value(self, x, state, action_mask=None, actions=None, obs_old=None):
         """
         Args:
             x: [batch_size, n_agents, obs_shape]
@@ -145,6 +145,8 @@ class MAPPO(nn.Module):
         """
         
         # print(f'self.type is: {self.type}')
+
+
         if self.type == 'conv':
             bs = x.shape[0]
             n_ags = x.shape[1]
@@ -157,7 +159,8 @@ class MAPPO(nn.Module):
         out_actions = []
         logprobs = []
         entropies = []
-
+ 
+        
         for i in range(self.n_agents):
             if self.shared_actor:
                 if self.continuous_action:
@@ -204,7 +207,7 @@ class MAPPO(nn.Module):
         entropies = torch.stack(entropies, dim=1)
         value = self.get_value(x, state)
         
-        return out_actions, logprobs, entropies, value
+        return out_actions, logprobs, entropies, value, None
     
     def update_lr(self, step, total_steps):
         frac = 1.0 - (step - 1.0) / total_steps
@@ -293,14 +296,14 @@ class MAPPO(nn.Module):
 
                 if b_state is not None:
                     if self.continuous_action:
-                        _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], None, b_actions[mb_inds])
+                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], None, b_actions[mb_inds])
                     else:
-                        _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], b_action_masks[mb_inds], b_actions.long()[mb_inds])
+                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], b_action_masks[mb_inds], b_actions.long()[mb_inds])
                 else:
                     if self.continuous_action:
-                        _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, None, b_actions[mb_inds])
+                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], None, None, b_actions[mb_inds])
                     else:
-                        _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, b_action_masks[mb_inds], b_actions.long()[mb_inds])
+                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], None, b_action_masks[mb_inds], b_actions.long()[mb_inds])
                 
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
