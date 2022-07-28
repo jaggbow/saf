@@ -5,39 +5,28 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:rtx8000:1
 #SBATCH --mem=70G                                     
-#SBATCH --time=14:00:00
+#SBATCH --time=6:00:00
 
 
 
-#param_store=scripts/seeds.txt
-#seed=$(cat $param_store | awk -v var=$SLURM_ARRAY_TASK_ID 'NR==var {print $1}')
-env=$1
-N_agents=$2
-Method=$3
-coordination=$4
-heterogeneity=$5
-seed=$6
-ProjectName=$7
 # 1. Load the required modules
 module --quiet load anaconda/3
 #conda activate marl
 conda activate PettingZoo
 
-ExpName=${env}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${Method}"_"${seed}
-echo "doing experiment: ${ExpName}"
-
-HYDRA_FULL_ERROR=1 python run.py \
+HYDRA_FULL_ERROR=1 python testing.py \
 env=marlgrid  \
-env.name=${env} \
+env.name=ClutteredGoalTileTeamsupportNHeterogneityEnv \
 env.params.max_steps=50 \
-env.params.coordination=${coordination} \
-env.params.heterogeneity=${heterogeneity} \
-seed=${seed} \
-n_agents=${N_agents} \
+env.params.coordination=2 \
+env.params.heterogeneity=1 \
+seed=6 \
+n_agents=2 \
 env_steps=50 \
-env.params.num_goals=100 \
-experiment_name=${ExpName} \
-policy=${Method} \
+env.params.num_goals=30 \
+env.params.grid_size=10 \
+experiment_name=test \
+policy=mappo \
 policy.params.type=conv \
 policy.params.activation=tanh \
 policy.params.update_epochs=10 \
@@ -47,4 +36,4 @@ policy.params.shared_actor=False \
 policy.params.shared_critic=False \
 policy.params.clip_vloss=True \
 runner.params.lr_decay=False \
-runner.params.comet.project_name=$ProjectName
+runner.params.comet.project_name=test

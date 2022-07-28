@@ -534,7 +534,8 @@ class SAF(nn.Module):
                 loss = pg_loss - self.ent_coef * entropy_loss + v_loss * self.vf_coef
 
                 self.optimizer.zero_grad()
-               
+                
+    
                 (loss+KL).backward()
                 
                 nn.utils.clip_grad_norm_(self.parameters(), self.max_grad_norm)

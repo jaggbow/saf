@@ -7,7 +7,7 @@ defaults:
 seed: 42
 torch_deterministic: True
 cuda: True
-rollout_threads: 64
+rollout_threads: 128
 n_agents: 3
 continuous_action: False
 env_steps: 25
