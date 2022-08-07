@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:rtx8000:1
 #SBATCH --mem=65G                                     
-#SBATCH --time=02-00:00:00
+#SBATCH --time=23:50:00
 
 
 
@@ -22,8 +22,8 @@ seed=$8
 ProjectName=$9
 # 1. Load the required modules
 module --quiet load anaconda/3
-conda activate marl
-#conda activate PettingZoo
+#conda activate marl
+conda activate PettingZoo
 
 ExpName=${env}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${Method}"-"${use_policy_pool}"-"${latent_kl}"_"${seed}
 echo "doing experiment: ${ExpName}"

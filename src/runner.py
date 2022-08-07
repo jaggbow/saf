@@ -27,9 +27,9 @@ class PGRunner:
         self.eval_episodes = params.eval_episodes
         self.use_comet = True if params.comet else False
         self.checkpoint_dir = params.checkpoint_dir
-        self.save_dir = Path(expandvars(expanduser(str(params.save_dir)))).resolve()
+        self.save_dir = Path(expandvars(expanduser(str(os.getcwd())))).resolve()
         self.save_dir.mkdir(parents=True, exist_ok=True)
-
+       
         if isinstance(train_env.observation_space, spaces.Dict):
             self.observation_space = train_env.observation_space['observation']
         elif isinstance(train_env.observation_space, tuple):
@@ -49,11 +49,14 @@ class PGRunner:
         self.policy = policy
         self.device = device
 
+
+
         if self.checkpoint_dir:
             print("Resuming training from", self.checkpoint_dir)
             self.load_checkpoints(self.checkpoint_dir)
             if self.use_comet:
                 api_key_path= Path(self.checkpoint_dir)/Path('apy_key.txt')
+                
                 with open(api_key_path) as f:
                     #self.exp = comet_ml.Experiment(api_key="qXdTq22JXVov2VvqWgZBj4eRr",project_name=params.comet.project_name)
                     self.exp_api_key = f.readlines()
@@ -77,7 +80,7 @@ class PGRunner:
             if self.use_comet:
                 # self.exp = comet_ml.Experiment(api_key="AIxlnGNX5bfAXGPOMAWbAymIz", project_name=params.comet.project_name)
                 # self.exp.set_name(f"{policy.__class__.__name__}_{os.environ['SLURM_JOB_ID']}")
-                self.exp = comet_ml.Experiment(api_key="AIxlnGNX5bfAXGPOMAWbAymIz",project_name=params.comet.project_name)
+                self.exp = comet_ml.Experiment(api_key="oHjAfUwAicWWeu3FMwDjhMYIl",project_name=params.comet.project_name)
                 self.exp.set_name(params.comet.experiment_name)
                 self.exp_key = self.exp.get_key()
 
@@ -106,7 +109,7 @@ class PGRunner:
         Args:
             action: [rollout_threads, n_agents] for Discrete type and [rollout_threads, n_agents, action_dim] for Box type
         '''
-        
+
         if self.action_space.__class__.__name__ == 'Box':
             action_ = action.reshape(-1, action.shape[-1]).cpu().numpy()
         elif self.action_space.__class__.__name__ == 'Discrete':
@@ -157,9 +160,10 @@ class PGRunner:
                 os.chdir(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
                 os.makedirs(self.save_dir, exist_ok = True)
                 api_key_path= Path(self.save_dir)/Path('apy_key.txt')
+                
                 with open(api_key_path, 'w') as f:
                     f.write(self.exp_key)
-
+        
         for update in range(1, num_updates + 1):
             if self.lr_decay:
                 self.policy.update_lr(update, num_updates)

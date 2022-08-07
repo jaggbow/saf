@@ -7,8 +7,8 @@ from .cluttered import ClutteredMultiGrid
 from .goalcycle import ClutteredGoalCycleEnv
 from .goaltile import ClutteredGoalTileEnv
 from .viz_test import VisibilityTestEnv
-from .goaltile_coordinationheterogeneity import ClutteredGoalTileCoordinationHeterogeneityEnv
-from .goaltile_teamsupportNheterogeneity import ClutteredGoalTileTeamsupportNHeterogneityEnv
+from .goaltile_teamtogether import TeamTogetherEnv
+from .goaltile_teamsupport import TeamSupportEnv
 from .goaltile_compound import ClutteredCompoundGoalTileCoordinationHeterogeneityEnv
 from ..agents import GridAgentInterface
 from gym.envs.registration import register as gym_register
@@ -76,8 +76,8 @@ def env_from_config(env_config, randomize_seed=True):
 def get_env_class(env_name):
     classes = {
         'ClutteredGoalTileEnv': ClutteredGoalTileEnv,
-        'ClutteredGoalTileCoordinationHeterogeneityEnv': ClutteredGoalTileCoordinationHeterogeneityEnv,
-        'ClutteredGoalTileTeamsupportNHeterogneityEnv':ClutteredGoalTileTeamsupportNHeterogneityEnv,
+        'TeamTogetherEnv': TeamTogetherEnv,
+        'TeamSupportEnv':TeamSupportEnv,
         'ClutteredCompoundGoalTileCoordinationHeterogeneityEnv': ClutteredCompoundGoalTileCoordinationHeterogeneityEnv,
     }
 

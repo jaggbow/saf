@@ -154,7 +154,7 @@ class GridAgent(WorldObj):
         return [">>", "VV", "<<", "^^"][(self.dir + dir) % 4]
 
     def can_overlap(self):
-        return False
+        return True
 
     def render(self, img):
         tri_fn = point_in_triangle((0.12, 0.19), (0.87, 0.50), (0.12, 0.81),)

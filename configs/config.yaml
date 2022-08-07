@@ -15,3 +15,6 @@ test_mode: False
 latent_kl : False
 use_policy_pool: False
 experiment_name: test
+hydra:
+  run:
+    dir: outputs/${experiment_name}

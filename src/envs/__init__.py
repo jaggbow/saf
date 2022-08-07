@@ -30,7 +30,7 @@ def get_env(env_name, family, params):
         env_instance_name = f'{env_name[9:-3]}-{params.N}Agents-{params.num_goals}Goals-v0'
         env_class = get_env_class(env_name)
 
-        if env_name=="ClutteredGoalTileCoordinationHeterogeneityEnv":
+        if env_name=="TeamTogetherEnv":
             
             register_marl_env(
                 env_instance_name,
@@ -49,7 +49,7 @@ def get_env(env_name, family, params):
                 }
             )
 
-        elif env_name=="ClutteredGoalTileTeamsupportNHeterogneityEnv":
+        elif env_name=="TeamSupportEnv":
             
             register_marl_env(
                 env_instance_name,
