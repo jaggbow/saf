@@ -8,7 +8,7 @@ from enum import IntEnum
 import math
 import warnings
 
-from .objects import WorldObj, Wall, Goal, Lava, GridAgent, BonusTile, BulkObj, COLORS
+from .objects import WorldObj, Wall, Goal, Lava, GridAgent, BonusTile, BulkObj, EmptyGoal, COLORS
 from .agents import GridAgentInterface
 # from .rendering import SimpleImageViewer
 from gym_minigrid.rendering import fill_coords, point_in_rect, downsample, highlight_img
@@ -152,7 +152,7 @@ class MultiGrid:
         self.grid[i, j] = self.obj_reg.get_key(obj)
 
         if (i1 is not None) and (j1 is not None):
-            self.grid[i1, j1] = self.grid[i, j]
+            self.grid[i1, j1] = self.obj_reg.get_key(EmptyGoal(color="yellow"))
 
     def get(self, i, j):
         assert i >= 0 and i < self.width
@@ -311,6 +311,7 @@ class MultiGrid:
             for i in range(0, self.width):
                 if visible_mask is not None and not visible_mask[i,j]:
                     continue
+
                 obj = self.get(i, j)
 
                 tile_img = MultiGrid.render_tile(
@@ -2689,7 +2690,6 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
             agent.step_reward = 0
 
             if agent.active:
-
                 cur_pos = agent.pos[:]
                 cur_cell = self.grid.get(*cur_pos)
                 fwd_pos = agent.front_pos[:]
@@ -2746,10 +2746,27 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
 
 
                         if hasattr(fwd_cell, 'get_reward'):
+                            if  hasattr(fwd_cell, 'satellite_pos'):
+                                satellites_satisfied = 0
+                                for pos in fwd_cell.satellite_pos:
+                                    satellite_obj = self.grid.get(*pos)
+                                    if satellite_obj is None:
+                                        continue
+                                    if len(satellite_obj.agents) >= 1:
+                                        satellites_satisfied += 1
 
+                                if satellites_satisfied == len(fwd_cell.satellite_pos):
+                                    for pos in fwd_cell.satellite_pos:
+                                        satellite_obj = self.grid.get(*pos)
+                                        if satellite_obj is not None:
+                                            satellite_obj.state = False
+                                            satellite_obj.color = "black"
 
-
-                            rwd = fwd_cell.get_reward(agent)
+                                    rwd = fwd_cell.get_reward(agent, True)
+                                else:
+                                    rwd = 0
+                            else:
+                                rwd = fwd_cell.get_reward(agent)
                             
                             if bool(self.reward_decay):
                                 rwd *= (1.0-0.9*(self.step_count/self.max_steps))
@@ -2805,6 +2822,45 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
 
                 agent.on_step(fwd_cell if agent_moved else None)
 
+        # To see if after all the agents have moved, any of the compound objects can be picked up
+        iter_agents = list(enumerate(zip(self.agents, actions)))
+        iter_order = np.arange(len(iter_agents))
+        self.np_random.shuffle(iter_order)
+        for shuffled_ix in iter_order:
+            agent_no, (agent, action) = iter_agents[shuffled_ix]
+            agent.step_reward = 0
+
+            if agent.active:
+                cur_pos = agent.pos[:]
+                cur_cell = self.grid.get(*cur_pos)
+
+                if hasattr(cur_cell, 'get_reward'):
+                    rwd = 0
+                    if hasattr(cur_cell, 'satellite_pos'):
+                        satellites_satisfied = 0
+                        for pos in cur_cell.satellite_pos:
+                            satellite_obj = self.grid.get(*pos)
+                            if satellite_obj is None:
+                                continue
+                            if len(satellite_obj.agents) >= 1:
+                                satellites_satisfied += 1
+                            
+                        if satellites_satisfied == len(cur_cell.satellite_pos):
+                            for pos in cur_cell.satellite_pos:
+                                satellite_obj = self.grid.get(*pos)
+                                if satellite_obj is not None:
+                                    satellite_obj.state = False
+                                    satellite_obj.color = "black"
+
+                            rwd = cur_cell.get_reward(agent, True)
+                        else:
+                            rwd = cur_cell.get_reward(agent, False)
+
+                    if bool(self.reward_decay):
+                        rwd *= (1.0-0.9*(self.step_count/self.max_steps))
+
+                    step_rewards[agent_no] += rwd
+                    agent.reward(rwd)
         
         # If any of the agents individually are "done" (hit lava or in some cases a goal) 
         #   but the env requires respawning, then respawn those agents.
@@ -2904,17 +2960,22 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
         Otherwise do nothing and return False. '''
         # grid_obj: whatever object is already at pos.
         pos1 = pos
+        # print(f'pos1 is: {pos1}')
+        # print(f'top is: {top}')
+        # print(f'bottom is: {bottom}')
         
-        if pos1[0] - 1 < top[0]:
+        if pos1[0] - 1 >= top[0]:
             pos2 = (pos1[0] - 1, pos1[1])
-        elif pos1[1] - 1 < top[1]:
+        elif pos1[1] - 1 >= top[1]:
             pos2 = (pos1[0], pos1[1] - 1)
-        elif pos1[0] + 1 > bottom[0]:
+        elif pos1[0] + 1 <= bottom[0]:
             pos2 = (pos1[0] + 1, pos1[1])
-        elif pos1[1] + 1 > bottom[1]:
+        elif pos1[1] + 1 <= bottom[1]:
             pos2 = (pos1[0], pos1[1] + 1)
         else:
             return False
+
+        # print(f'pos2 is: {pos2}')
 
         grid_obj1 = self.grid.get(*pos1)
         grid_obj2 = self.grid.get(*pos2)

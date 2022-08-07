@@ -4,11 +4,11 @@
 
 # ##different baselines at different levels of coordination for marlgrid
 
-ProjectName="teamsupport_coordination_baselines"
+ProjectName="compoundgoal_coordination_baselines"
 #ProjectName="test"
 
 
-declare -a All_Envs=("ClutteredGoalTileTeamsupportNHeterogneityEnv") #ClutteredGoalTileTeamsupportNHeterogneityEnv,ClutteredGoalTileCoordinationHeterogeneityEnv
+declare -a All_Envs=("ClutteredCompoundGoalTileCoordinationHeterogeneityEnv") #ClutteredGoalTileTeamsupportNHeterogneityEnv,ClutteredGoalTileCoordinationHeterogeneityEnv
 
 
 declare -a All_N_agents=(10)
@@ -16,7 +16,7 @@ declare -a All_N_agents=(10)
 declare -a All_Methods=("mappo" "ippo")
 
 
-declare -a All_coordination=(1 2 3 4 5)
+declare -a All_coordination=(1)
 
 declare -a All_heterogeneity=(1)
 
@@ -57,11 +57,11 @@ done
 
 # # #different baselines at different levels of heterogeneity for marlgrid
 
-ProjectName="teamsupport_heterogeneity_baselines"
+ProjectName="compoundgoal_heterogeneity_baselines"
 #ProjectName="test"
 
 
-declare -a All_Envs=("ClutteredGoalTileTeamsupportNHeterogneityEnv") #"ClutteredGoalTileTeamsupportNHeterogneityEnv" "ClutteredGoalTileCoordinationHeterogeneityEnv"
+declare -a All_Envs=("ClutteredCompoundGoalTileCoordinationHeterogeneityEnv") #"ClutteredGoalTileTeamsupportNHeterogneityEnv" "ClutteredGoalTileCoordinationHeterogeneityEnv"
 
 
 declare -a All_N_agents=(10)
@@ -107,18 +107,18 @@ done
 
 #########different version of saf on marlgrid 
 
-ProjectName="teamsupport_coordination_saf"
+ProjectName="compoundgoal_coordination_saf"
 #ProjectName="test"
 
 
-declare -a All_Envs=("ClutteredGoalTileTeamsupportNHeterogneityEnv") #"ClutteredGoalTileTeamsupportNHeterogneityEnv" "ClutteredGoalTileCoordinationHeterogeneityEnv"
+declare -a All_Envs=("ClutteredCompoundGoalTileCoordinationHeterogeneityEnv") #"ClutteredGoalTileTeamsupportNHeterogneityEnv" "ClutteredGoalTileCoordinationHeterogeneityEnv"
 
 
 declare -a All_N_agents=(10)
 
 declare -a All_Methods=("saf")
 
-declare -a All_coordination=(1 2 3 4 5)
+declare -a All_coordination=(1)
 
 declare -a All_heterogeneity=(1)
 
@@ -168,11 +168,11 @@ done
 
 
 
-ProjectName="teamsupport_heterogeneity_saf"
+ProjectName="compoundgoal_heterogeneity_saf"
 #ProjectName="test"
 
 
-declare -a All_Envs=("ClutteredGoalTileTeamsupportNHeterogneityEnv") #"ClutteredGoalTileTeamsupportNHeterogneityEnv" "ClutteredGoalTileCoordinationHeterogeneityEnv"
+declare -a All_Envs=("ClutteredCompoundGoalTileCoordinationHeterogeneityEnv") #"ClutteredGoalTileTeamsupportNHeterogneityEnv" "ClutteredGoalTileCoordinationHeterogeneityEnv"
 
 
 declare -a All_N_agents=(10)

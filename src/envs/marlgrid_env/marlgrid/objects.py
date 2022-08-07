@@ -467,24 +467,46 @@ class GoalTeam(WorldObj):
     def render(self, img):
         fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
 
-class CompoundGoalTile(WorldObj):
-    def __init__(self, reward, *args, **kwargs):
+class EmptyGoal(WorldObj):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.reward = reward
+        self.reward = 0
         self.state = True
 
     def can_overlap(self):
         return True
 
     def get_reward(self, agent):
-        if self.state and len(self.agents) >= self.coordination: # this reward can only be collected if k agents are on it simutaneously
+        return 0
+
+    def str_render(self, dir=0):
+        return "GG"
+
+    def render(self, img):
+        fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])
+
+class CompoundGoalTile(WorldObj):
+    def __init__(self, reward, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.reward = reward
+        self.state = True
+        self.satellite_pos = []
+
+    def can_overlap(self):
+        return True
+
+    def get_reward(self, agent, satisfy=False):
+        if self.state and satisfy: # this reward can only be collected if k agents are on it simutaneously
             self.state = False
             self.color = "black"
             return self.reward
         else:
             return 0
 
-
+    def set_position(self, pos1, pos2):
+        self.pos1 = pos1
+        self.satellite_pos.append(pos2)
+    
     def str_render(self, dir=0):
         return "GG"
 

@@ -77,12 +77,10 @@ class PGRunner:
             if self.use_comet:
                 # self.exp = comet_ml.Experiment(api_key="AIxlnGNX5bfAXGPOMAWbAymIz", project_name=params.comet.project_name)
                 # self.exp.set_name(f"{policy.__class__.__name__}_{os.environ['SLURM_JOB_ID']}")
-                self.exp = comet_ml.Experiment(api_key="oHjAfUwAicWWeu3FMwDjhMYIl",project_name=params.comet.project_name)
+                self.exp = comet_ml.Experiment(api_key="AIxlnGNX5bfAXGPOMAWbAymIz",project_name=params.comet.project_name)
                 self.exp.set_name(params.comet.experiment_name)
                 self.exp_key = self.exp.get_key()
-            
-           
-            
+
     def env_reset(self):
         '''
         Resets the environment.
@@ -118,7 +116,6 @@ class PGRunner:
         
         obs, state, act_masks, reward, done, info = self.train_env.step(action_)
 
-        
         obs = torch.Tensor(obs).reshape((-1, self.n_agents)+obs.shape[1:]).to(self.device) # [rollout_threads, n_agents, obs_shape]
         state = torch.Tensor(state).reshape((-1, self.n_agents)+state.shape[1:]).to(self.device) # [rollout_threads, n_agents, state_shape]
         if type(act_masks) != type(None):
@@ -140,7 +137,6 @@ class PGRunner:
         num_updates = self.total_timesteps // self.batch_size
         best_return = -1e9
         
-
         if self.latent_kl:
             ## old_observation - shifted tensor (the zero-th obs is assumed to be equal to the first one)
             obs_old = obs.clone()
@@ -174,7 +170,6 @@ class PGRunner:
             nb_wins = np.zeros(self.rollout_threads)
 
             for step in range(self.env_steps):
-                # print(f'Update Step: {update} | Env Step: {step}')
                 global_step += self.rollout_threads
 
                 with torch.no_grad():

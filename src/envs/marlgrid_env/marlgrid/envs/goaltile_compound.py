@@ -28,8 +28,6 @@ class ClutteredCompoundGoalTileCoordinationHeterogeneityEnv(MultiGridEnv_coodina
         self.heterogeneity=heterogeneity
         self.bonus_tiles = []
 
-
-
     def _gen_grid(self, width, height):
         self.grid = MultiGrid((width, height))
         self.grid.wall_rect(0, 0, width, height)

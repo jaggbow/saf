@@ -5,14 +5,14 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:rtx8000:1
 #SBATCH --mem=70G                                     
-#SBATCH --time=6:00:00
+#SBATCH --time=02-00:00:00
 
 
 
 # 1. Load the required modules
 module --quiet load anaconda/3
-#conda activate marl
-conda activate PettingZoo
+conda activate marl
+#conda activate PettingZoo
 
 HYDRA_FULL_ERROR=1 python testing.py \
 env=marlgrid  \

@@ -1,4 +1,4 @@
-name: ClutteredGoalTileCoordinationEnv
+name: ClutteredCompoundGoalTileCoordinationHeterogeneityEnv
 family: marlgrid
 rollout_threads: ${rollout_threads}
 continuous_action: ${continuous_action}

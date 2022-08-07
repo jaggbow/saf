@@ -9,6 +9,7 @@ from .goaltile import ClutteredGoalTileEnv
 from .viz_test import VisibilityTestEnv
 from .goaltile_coordinationheterogeneity import ClutteredGoalTileCoordinationHeterogeneityEnv
 from .goaltile_teamsupportNheterogeneity import ClutteredGoalTileTeamsupportNHeterogneityEnv
+from .goaltile_compound import ClutteredCompoundGoalTileCoordinationHeterogeneityEnv
 from ..agents import GridAgentInterface
 from gym.envs.registration import register as gym_register
 
@@ -77,6 +78,7 @@ def get_env_class(env_name):
         'ClutteredGoalTileEnv': ClutteredGoalTileEnv,
         'ClutteredGoalTileCoordinationHeterogeneityEnv': ClutteredGoalTileCoordinationHeterogeneityEnv,
         'ClutteredGoalTileTeamsupportNHeterogneityEnv':ClutteredGoalTileTeamsupportNHeterogneityEnv,
+        'ClutteredCompoundGoalTileCoordinationHeterogeneityEnv': ClutteredCompoundGoalTileCoordinationHeterogeneityEnv,
     }
 
     return classes[env_name]
@@ -91,14 +93,15 @@ def get_env_class(env_name):
 #     env_kwargs={'n_clutter':30}
 # )
 
-# register_marl_env(
-#     "MarlGrid-3AgentCluttered11x11-v0",
-#     ClutteredMultiGrid,
-#     n_agents=3,
-#     grid_size=11,
-#     view_size=7,
-#     env_kwargs={'clutter_density':0.15}
-# )
+register_marl_env(
+    "MarlGrid-3AgentCluttered11x11-v0",
+    ClutteredMultiGrid,
+    n_agents=3,
+    grid_size=11,
+    view_size=7,
+    max_steps=20,
+    env_kwargs={'clutter_density':0.15}
+)
 
 # register_marl_env(
 #     "MarlGrid-3AgentCluttered15x15-v0",
@@ -122,15 +125,16 @@ def get_env_class(env_name):
 # )
 
 # register_marl_env(
-#     "Goalcycle-demo-solo-v0", 
+#     "Goalcycle-demo-two-v0", 
 #     ClutteredGoalCycleEnv, 
-#     n_agents=1, 
-#     grid_size=13,
+#     n_agents=2, 
+#     grid_size=7,
 #     view_size=7,
 #     view_tile_size=5,
 #     view_offset=1,
+#     max_steps=20,
 #     env_kwargs={
-#         'clutter_density':0.1,
+#         'clutter_density':0.0,
 #         'n_bonus_tiles': 3
 #     }
 # )
@@ -319,6 +323,22 @@ register_marl_env(
     env_kwargs={
         'clutter_density':0.2,
         'n_bonus_tiles': 100,
+    }
+)
+
+register_marl_env(
+    "GoaltileCompound-2Agents-3Goals-v0",
+    ClutteredCompoundGoalTileCoordinationHeterogeneityEnv,
+    n_agents=2,
+    grid_size=8,
+    max_steps=20,
+    view_size=7,
+    view_tile_size=8,
+    view_offset=1,
+    env_kwargs={
+        'clutter_density': 0.1,
+        'n_bonus_tiles': 3,
+        'heterogeneity':1,
     }
 )
 

@@ -134,6 +134,7 @@ def main(cfg: DictConfig):
     
     if not cfg.test_mode:
         runner.run()
+
     mean_rewards, std_rewards, mean_wins, std_wins = runner.evaluate()
     print(f"Eval Rewards: {mean_rewards} +- {std_rewards} | Eval Win Rate: {mean_wins} +- {std_wins}")
     train_envs.close()
