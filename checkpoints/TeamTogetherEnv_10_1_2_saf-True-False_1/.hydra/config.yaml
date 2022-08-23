@@ -1,0 +1,87 @@
+policy:
+  _target_: src.policies.saf.SAF
+  params:
+    n_layers: 2
+    n_layers_perceiver: 2
+    hidden_dim: 128
+    learning_rate: 0.0007
+    gamma: 0.99
+    gae_lambda: 0.95
+    gae: false
+    n_agents: ${n_agents}
+    ent_coef: 0.01
+    vf_coef: 0.5
+    norm_adv: true
+    clip_coef: 0.2
+    clip_vloss: true
+    max_grad_norm: 9
+    target_kl: null
+    update_epochs: 10
+    num_minibatches: 1
+    rollout_threads: ${rollout_threads}
+    env_steps: ${env_steps}
+    activation: tanh
+    shared_critic: false
+    shared_actor: false
+    use_policy_pool: ${use_policy_pool}
+    use_SK: true
+    use_indepedance_reward: false
+    N_SK_slots: 4
+    n_policy: 4
+    indepedence_coef: 0.01
+    continuous_action: ${continuous_action}
+    action_std_init: 0.005
+    latent_kl: ${latent_kl}
+    latent_dim: 8
+    type: conv
+    conv_out_size: 64
+env:
+  name: TeamTogetherEnv
+  family: marlgrid
+  rollout_threads: ${rollout_threads}
+  continuous_action: ${continuous_action}
+  obs_type: image
+  params:
+    'N': ${n_agents}
+    max_cycles: ${env_steps}
+    continuous_actions: ${env.continuous_action}
+    num_goals: 100
+    grid_size: 30
+    max_steps: 50
+    view_size: 7
+    view_tile_size: 4
+    clutter_density: 0.1
+    coordination: 1
+    heterogeneity: 2
+buffer:
+  n_agents: ${n_agents}
+  rollout_threads: ${rollout_threads}
+  env_steps: ${env_steps}
+  continuous_action: ${continuous_action}
+runner:
+  _target_: src.runner.PGRunner
+  params:
+    total_timesteps: 10000000
+    rollout_threads: ${rollout_threads}
+    env_steps: ${env_steps}
+    lr_decay: false
+    n_agents: ${n_agents}
+    eval_episodes: 32
+    checkpoint_dir: null
+    experiment_name: ${experiment_name}
+    save_dir: outputs/${experiment_name}/
+    latent_kl: ${latent_kl}
+    comet:
+      project_name: team_heterogeneity_saf
+      experiment_name: ${experiment_name}
+seed: 1
+torch_deterministic: true
+cuda: true
+rollout_threads: 128
+n_agents: 10
+continuous_action: false
+env_steps: 50
+test_mode: false
+latent_kl: false
+use_policy_pool: true
+experiment_name: TeamTogetherEnv_10_1_2_saf-True-False_1
