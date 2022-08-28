@@ -287,7 +287,8 @@ class PGRunner:
                 for agent in obs_:
                     obs.append(torch.from_numpy(obs_[agent]))
                     state.append(torch.from_numpy(state_[agent]))
-                    act_mask.append(torch.from_numpy(act_mask_[agent]))
+                    if act_mask_ is not None:
+                        act_mask.append(torch.from_numpy(act_mask_[agent]))
 
                 obs = torch.stack(obs, dim=0).unsqueeze(0).to(self.device)
                 state = torch.stack(state, dim=0).unsqueeze(0).to(self.device)
@@ -301,7 +302,10 @@ class PGRunner:
                     obs_old = None
 
                 with torch.no_grad():
-                    action_, _, _, _, _ = self.policy.get_action_and_value(obs, state, act_mask, None, obs_old)
+                    if act_mask_ is not None:
+                        action_, _, _, _, _ = self.policy.get_action_and_value(obs, state, act_mask, None, obs_old)
+                    else:
+                        action_, _, _, _, _ = self.policy.get_action_and_value(obs, state, None, None, obs_old)
                     if self.action_space.__class__.__name__ == 'Box':
                         action_ = action_.reshape(-1, action_.shape[-1]).cpu().numpy()
                     elif self.action_space.__class__.__name__ == 'Discrete':
