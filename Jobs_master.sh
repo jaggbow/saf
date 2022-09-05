@@ -5,14 +5,12 @@
 
 
 
-#########different version of saf on marlgrid 
+########different version of saf on marlgrid 
 
-ProjectName="team_coordination_saf"
+ProjectName="team_coordination_saf2"
 
 
-
-declare -a All_Envs=("TeamTogetherEnv" "TeamSupportEnv") #"TeamTogetherEnv" "ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
-
+declare -a All_Envs=("PrisonBreakEnv") #"TeamTogetherEnv" "TeamSupportEnv"
 declare -a All_N_agents=(10)
 
 declare -a All_Methods=("saf")
@@ -64,11 +62,11 @@ do
 done
 
 
-ProjectName="team_heterogeneity_saf"
+ProjectName="team_heterogeneity_saf2"
 #ProjectName="test"
 
 
-declare -a All_Envs=("TeamSupportEnv" "TeamTogetherEnv") #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
+declare -a All_Envs=("PrisonBreakEnv") #"TeamSupportEnv" "TeamTogetherEnv" #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
 
 declare -a All_N_agents=(10)
 
@@ -128,11 +126,11 @@ done
 
 # ##different baselines at different levels of coordination for marlgrid
 
-ProjectName="team_coordination_baselines"
+ProjectName="team_coordination_baselines2"
 #ProjectName="test"
 
 
-declare -a All_Envs=("TeamSupportEnv" "TeamTogetherEnv") #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
+declare -a All_Envs=("PrisonBreakEnv") #"TeamSupportEnv" "TeamTogetherEnv" #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
 
 
 declare -a All_N_agents=(10)
@@ -181,11 +179,11 @@ done
 
 # # #different baselines at different levels of heterogeneity for marlgrid
 
-ProjectName="team_heterogeneity_baselines"
+ProjectName="team_heterogeneity_baselines2"
 #ProjectName="test"
 
 
-declare -a All_Envs=("TeamSupportEnv" "TeamTogetherEnv") #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
+declare -a All_Envs=("PrisonBreakEnv") #"TeamSupportEnv" "TeamTogetherEnv"#"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
 
 
 declare -a All_N_agents=(10)
@@ -226,4 +224,9 @@ do
 		done
 	done
 done
+
+
+
+
+
 

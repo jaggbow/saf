@@ -6,7 +6,9 @@ class TeamTogetherEnv(MultiGridEnv_coodinationNheterogeneity):
     mission = "collect as many treasures as possible"
     metadata = {}
 
-    def __init__(self, *args, reward=1, penalty=0.0, n_clutter=None, clutter_density=None, n_bonus_tiles=3, initial_reward=True, cycle_reset=False, reset_on_mistake=False, reward_decay=False,coordination_level=1,heterogeneity=1, **kwargs):
+    def __init__(self, *args, reward=1, penalty=0.0, n_clutter=None,
+             clutter_density=None, n_bonus_tiles=3, initial_reward=True, 
+             cycle_reset=False, reset_on_mistake=False, reward_decay=False,coordination_level=1,heterogeneity=1, **kwargs):
         if (n_clutter is None) == (clutter_density is None):
             raise ValueError("Must provide n_clutter xor clutter_density in environment config.")
 

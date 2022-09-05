@@ -10,6 +10,7 @@ from .viz_test import VisibilityTestEnv
 from .goaltile_teamtogether import TeamTogetherEnv
 from .goaltile_teamsupport import TeamSupportEnv
 from .goaltile_compound import ClutteredCompoundGoalTileCoordinationHeterogeneityEnv
+from .prisonbreak import PrisonBreakEnv
 from ..agents import GridAgentInterface
 from gym.envs.registration import register as gym_register
 
@@ -78,6 +79,7 @@ def get_env_class(env_name):
         'ClutteredGoalTileEnv': ClutteredGoalTileEnv,
         'TeamTogetherEnv': TeamTogetherEnv,
         'TeamSupportEnv':TeamSupportEnv,
+        "PrisonBreakEnv":PrisonBreakEnv,
         'ClutteredCompoundGoalTileCoordinationHeterogeneityEnv': ClutteredCompoundGoalTileCoordinationHeterogeneityEnv,
     }
 
@@ -93,15 +95,15 @@ def get_env_class(env_name):
 #     env_kwargs={'n_clutter':30}
 # )
 
-register_marl_env(
-    "MarlGrid-3AgentCluttered11x11-v0",
-    ClutteredMultiGrid,
-    n_agents=3,
-    grid_size=11,
-    view_size=7,
-    max_steps=20,
-    env_kwargs={'clutter_density':0.15}
-)
+# register_marl_env(
+#     "MarlGrid-3AgentCluttered11x11-v0",
+#     ClutteredMultiGrid,
+#     n_agents=3,
+#     grid_size=11,
+#     view_size=7,
+#     max_steps=20,
+#     env_kwargs={'clutter_density':0.15}
+# )
 
 # register_marl_env(
 #     "MarlGrid-3AgentCluttered15x15-v0",
@@ -342,3 +344,18 @@ register_marl_env(
     }
 )
 
+
+
+
+register_marl_env(
+    "PrisonBreakEnv-10Agents-v1",
+    PrisonBreakEnv,
+    n_agents=10,
+    grid_size=30,
+    max_steps=150,
+    view_size=7,
+    view_tile_size=8,
+    view_offset=1,
+    env_kwargs={
+    }
+)
