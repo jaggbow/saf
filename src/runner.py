@@ -109,6 +109,7 @@ class PGRunner:
         Args:
             action: [rollout_threads, n_agents] for Discrete type and [rollout_threads, n_agents, action_dim] for Box type
         '''
+
         if self.action_space.__class__.__name__ == 'Box':
             action_ = action.reshape(-1, action.shape[-1]).cpu().numpy()
         elif self.action_space.__class__.__name__ == 'Discrete':
@@ -125,6 +126,7 @@ class PGRunner:
         done = torch.Tensor(done).reshape((-1, self.n_agents)).to(self.device) # [rollout_threads, n_agents]
 
         reward = torch.Tensor(reward).reshape((-1, self.n_agents)).to(self.device) # [rollout_threads, n_agent]
+
         return obs, state, act_masks, reward, done, info
     
     def run(self):
