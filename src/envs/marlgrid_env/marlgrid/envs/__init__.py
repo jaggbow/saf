@@ -10,6 +10,7 @@ from .viz_test import VisibilityTestEnv
 from .goaltile_teamtogether import TeamTogetherEnv
 from .goaltile_teamsupport import TeamSupportEnv
 from .goaltile_compound import ClutteredCompoundGoalTileCoordinationHeterogeneityEnv
+from .keyfortreasure import keyfortreasure
 from .prisonbreak import PrisonBreakEnv
 from ..agents import GridAgentInterface
 from gym.envs.registration import register as gym_register
@@ -80,6 +81,7 @@ def get_env_class(env_name):
         'TeamTogetherEnv': TeamTogetherEnv,
         'TeamSupportEnv':TeamSupportEnv,
         "PrisonBreakEnv":PrisonBreakEnv,
+        "keyfortreasure":keyfortreasure,
         'ClutteredCompoundGoalTileCoordinationHeterogeneityEnv': ClutteredCompoundGoalTileCoordinationHeterogeneityEnv,
     }
 
@@ -357,5 +359,21 @@ register_marl_env(
     view_tile_size=8,
     view_offset=1,
     env_kwargs={
+    }
+)
+
+
+register_marl_env(
+    "keyfortreasure-10Agents-v1",
+    keyfortreasure,
+    n_agents=10,
+    grid_size=30,
+    max_steps=150,
+    view_size=7,
+    view_tile_size=8,
+    view_offset=1,
+    env_kwargs={
+            'clutter_density':0.2,
+            'n_bonus_tiles': 100,
     }
 )

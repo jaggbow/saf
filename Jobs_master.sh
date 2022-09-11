@@ -2,15 +2,12 @@
 
 
 
-
-
-
-########different version of saf on marlgrid 
-
 ProjectName="team_coordination_saf2"
+#ProjectName="test"
 
 
-declare -a All_Envs=("PrisonBreakEnv") #"TeamTogetherEnv" "TeamSupportEnv"
+declare -a All_Envs=("keyfortreasure") #"TeamSupportEnv" "TeamTogetherEnv" #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
+
 declare -a All_N_agents=(10)
 
 declare -a All_Methods=("saf")
@@ -19,7 +16,10 @@ declare -a All_coordination=(1 2 3 4 5)
 
 declare -a All_heterogeneity=(1)
 
+
+
 declare -a All_use_policy_pool=(True False)
+
 
 declare -a All_latent_kl=(True False)
 
@@ -62,11 +62,14 @@ do
 done
 
 
+
+
+
 ProjectName="team_heterogeneity_saf2"
 #ProjectName="test"
 
 
-declare -a All_Envs=("PrisonBreakEnv") #"TeamSupportEnv" "TeamTogetherEnv" #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
+declare -a All_Envs=("keyfortreasure") #"TeamSupportEnv" "TeamTogetherEnv" #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
 
 declare -a All_N_agents=(10)
 
@@ -124,13 +127,13 @@ done
 
 
 
-# ##different baselines at different levels of coordination for marlgrid
+##different baselines at different levels of coordination for marlgrid
 
 ProjectName="team_coordination_baselines2"
 #ProjectName="test"
 
 
-declare -a All_Envs=("PrisonBreakEnv") #"TeamSupportEnv" "TeamTogetherEnv" #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
+declare -a All_Envs=("keyfortreasure") #"TeamSupportEnv" "TeamTogetherEnv" #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
 
 
 declare -a All_N_agents=(10)
@@ -183,7 +186,7 @@ ProjectName="team_heterogeneity_baselines2"
 #ProjectName="test"
 
 
-declare -a All_Envs=("PrisonBreakEnv") #"TeamSupportEnv" "TeamTogetherEnv"#"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
+declare -a All_Envs=("keyfortreasure") #"TeamSupportEnv" "TeamTogetherEnv"#"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
 
 
 declare -a All_N_agents=(10)
