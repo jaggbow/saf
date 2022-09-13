@@ -42,16 +42,17 @@ class PGRunner:
         else:
             self.action_space = train_env.action_space
         
-
+        test_mode = params.test_mode
         self.train_env = train_env
         self.eval_env = eval_env
         self.buffer = buffer
         self.policy = policy
         self.device = device
+        os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        print(os.getcwd())
 
 
-
-        if self.checkpoint_dir:
+        if self.checkpoint_dir is not None and not test_mode:
             print("Resuming training from", self.checkpoint_dir)
             self.load_checkpoints(self.checkpoint_dir)
             if self.use_comet:
@@ -77,10 +78,13 @@ class PGRunner:
                         self.step = int(api_experiment.get_parameters_summary("curr_step")["valueCurrent"])
                     
         else: 
+            if test_mode:
+                print("Loading model from", self.checkpoint_dir)
+                self.load_checkpoints(self.checkpoint_dir)
             if self.use_comet:
                 # self.exp = comet_ml.Experiment(api_key="AIxlnGNX5bfAXGPOMAWbAymIz", project_name=params.comet.project_name)
                 # self.exp.set_name(f"{policy.__class__.__name__}_{os.environ['SLURM_JOB_ID']}")
-                self.exp = comet_ml.Experiment(api_key="oHjAfUwAicWWeu3FMwDjhMYIl",project_name=params.comet.project_name)
+                self.exp = comet_ml.Experiment(api_key="qXdTq22JXVov2VvqWgZBj4eRr",project_name=params.comet.project_name)
                 self.exp.set_name(params.comet.experiment_name)
                 self.exp_key = self.exp.get_key()
 
@@ -278,13 +282,13 @@ class PGRunner:
         agg_wins = []
         
 
-        for _ in range(self.eval_episodes):
+        for global_step in range(self.eval_episodes):
             total_rewards = 0
             obs_, state_, act_mask_ = self.eval_env.reset()
             for step in range(self.env_steps):
 
                 obs, state, act_mask = [], [], []
-                for agent in obs_:
+                for agent in range(obs_.shape[0]):
                     obs.append(torch.from_numpy(obs_[agent]))
                     state.append(torch.from_numpy(state_[agent]))
                     if act_mask_ is not None:
@@ -292,7 +296,8 @@ class PGRunner:
 
                 obs = torch.stack(obs, dim=0).unsqueeze(0).to(self.device)
                 state = torch.stack(state, dim=0).unsqueeze(0).to(self.device)
-                act_mask = torch.stack(act_mask, dim=0).unsqueeze(0).to(self.device)
+                if act_mask_ is not None:
+                    act_mask = torch.stack(act_mask, dim=0).unsqueeze(0).to(self.device)
 
                 if self.latent_kl:
                     ## old_observation - shifted tensor (the zero-th obs is assumed to be equal to the first one)
@@ -313,19 +318,21 @@ class PGRunner:
                     else:
                         NotImplementedError
                     action = {}
-                    for i, agent in enumerate(obs_.keys()):
-                        action[agent] = action_[i]
+                    for agent in range(obs_.shape[0]):
+                        action[agent] = action_[agent]
                 
-                next_obs, next_state, next_act_mask, reward, done_, info = self.eval_env.step(action)
+                next_obs, next_state, next_act_mask, reward, done_, info = self.eval_env.step(action_)
                 
-                for agent in reward:
+                
+                for agent in range(reward.shape[0]):
                     total_rewards += reward[agent]
                 
                 done = False
-                for agent in done_:
-                    if done_[agent]:
+                for agent in range(done_.shape[1]):
+                    if done_.any(1) is True:
                         done = True
                         break
+                print(done)
                 if done:
                     break
                 obs_ = next_obs
@@ -341,6 +348,10 @@ class PGRunner:
             
             agg_rewards.append(total_rewards)
             agg_wins.append(win)
+            total_rewards = total_rewards.mean().item()
+            print(f"global_step={global_step}, episodic_return={total_rewards}")
+            if self.use_comet:
+                self.exp.log_metric("episodic_return", total_rewards, global_step)
             
                         
         mean_rewards = np.mean(agg_rewards)

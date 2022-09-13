@@ -53,7 +53,7 @@ def make_train_env(env_config):
 def make_eval_env(env_config):
     
     if env_config.family == 'marlgrid':
-        envs = [AddStateSpaceActMaskWrapper(PermuteObsWrapper(get_env(env_config.name, env_config.family, env_config.params))) for _ in range(env_config.rollout_threads)]
+        envs = [AddStateSpaceActMaskWrapper(PermuteObsWrapper(get_env(env_config.name, env_config.family, env_config.params))) for _ in range(1)]
         env = ParallelEnv(envs)
         return env
 
