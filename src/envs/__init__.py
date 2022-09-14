@@ -68,6 +68,24 @@ def get_env(env_name, family, params):
                 }
             )
 
+        elif env_name=="keyfortreasure":
+            
+            register_marl_env(
+                env_instance_name,
+                env_class,
+                n_agents=params.N,
+                grid_size=params.grid_size,
+                max_steps=params.max_steps,
+                view_size=params.view_size,
+                view_tile_size=params.view_tile_size,
+                view_offset=1,
+                env_kwargs={
+                    'clutter_density': params.clutter_density,
+                    'n_bonus_tiles': params.num_goals,
+                    'coordination_level':params.coordination,
+                    'heterogeneity':params.heterogeneity,
+                }
+            )
 
         elif env_name=="PrisonBreakEnv":
             
