@@ -2245,7 +2245,7 @@ class MultiGridEnv_keyfortreasuresNheterogeneity(gym.Env):
                     agent.color="blue"#change color of the agent when it is carrying a key, so other agent can see its state
                     
 
-                if (agent.carrying is not None and isinstance(agent.carrying, Key)) and (N_agents_around<self.coordination_level):
+                if (agent.carrying is not None and isinstance(agent.carrying, Key)) and (N_agents_around>=self.coordination_level):
                     allow_reward=True
 
                 else:
