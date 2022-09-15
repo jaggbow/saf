@@ -6,7 +6,10 @@ class keyfortreasure(MultiGridEnv_keyfortreasuresNheterogeneity):
     mission = "collect as many treasures as possible,treasures can only be collect if the agents have keys"
     metadata = {}
 
-    def __init__(self, *args, reward=1, penalty=0.0, n_clutter=None, clutter_density=None, n_keys=20,n_bonus_tiles=3, initial_reward=True, cycle_reset=False, reset_on_mistake=False, reward_decay=False,coordination_level=1,heterogeneity=1, **kwargs):
+    def __init__(self, *args, reward=1, penalty=0.0, n_clutter=None,
+     clutter_density=None, n_keys=30,n_bonus_tiles=3,
+      initial_reward=True, cycle_reset=False, reset_on_mistake=False,
+       reward_decay=False,coordination_level=1,heterogeneity=1, **kwargs):
         if (n_clutter is None) == (clutter_density is None):
             raise ValueError("Must provide n_clutter xor clutter_density in environment config.")
 
@@ -24,9 +27,11 @@ class keyfortreasure(MultiGridEnv_keyfortreasuresNheterogeneity):
         self.initial_reward = initial_reward
         self.n_bonus_tiles = n_bonus_tiles
         self.n_keys=n_keys
+  
 
         self.reset_on_mistake = reset_on_mistake
         self.coordination_level=coordination_level
+
         self.heterogeneity=heterogeneity
         self.bonus_tiles = []
 

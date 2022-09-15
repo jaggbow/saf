@@ -2237,10 +2237,21 @@ class MultiGridEnv_keyfortreasuresNheterogeneity(gym.Env):
                     y2=self.agents[a_idx].pos[1]
                     if abs(x2-x1)<=Distance_range and abs(y2-y1)<=Distance_range:
                         N_agents_around+=1
-                if N_agents_around<self.coordination_level:
-                    allow_reward=False
-                else:
+
+
+                if (agent.carrying is not None and isinstance(agent.carrying, Key)):
+                    agent.color="blue"#change color of the agent when it is carrying a key, so other agent can see its state
+                    
+
+                if (agent.carrying is not None and isinstance(agent.carrying, Key)) and (N_agents_around>=self.coordination_level):
                     allow_reward=True
+
+                else:
+                    allow_reward=False
+
+                allow_pickup=True#always allow pickup keys
+
+  
 
 
                 #print("coordination",self.coordination_level,"N_agents_around",N_agents_around)
@@ -2294,7 +2305,7 @@ class MultiGridEnv_keyfortreasuresNheterogeneity(gym.Env):
                         # Rewards can be got iff. fwd_cell has a "get_reward" method
 
                         #the agent can only get reward if it has a key
-                        if hasattr(fwd_cell, 'get_reward') and allow_reward and (agent.carrying is not None and isinstance(agent.carrying, Key)):
+                        if hasattr(fwd_cell, 'get_reward') and allow_reward:#reward only allowed if carrying a key and supported by other agents
 
                             rwd = fwd_cell.get_reward(agent)
                             
@@ -2313,14 +2324,15 @@ class MultiGridEnv_keyfortreasuresNheterogeneity(gym.Env):
                 #  supports the relevant interactions.
                 # Pick up an object
                 elif action == agent.actions.pickup:
-                    if hasattr(cur_cell, 'get_reward') and allow_reward:
+                    if hasattr(cur_cell, 'get_reward') and allow_reward :#reward only allowed if carrying a key and supported by other agents
                         rwd = cur_cell.get_reward(agent)
                         if bool(self.reward_decay):
                             rwd *= (1.0-0.9*(self.step_count/self.max_steps))
                         step_rewards[agent_no] += rwd
+
                         agent.reward(rwd)
-                    
-                    if fwd_cell and fwd_cell.can_pickup() and allow_reward: #need to be supported by other agents to pick up the reward
+                        
+                    if fwd_cell and fwd_cell.can_pickup() and allow_pickup:
                         if agent.carrying is None:
                             agent.carrying = fwd_cell
                             agent.carrying.cur_pos = np.array([-1, -1])
