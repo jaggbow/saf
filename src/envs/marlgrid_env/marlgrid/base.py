@@ -1,5 +1,6 @@
 # Multi-agent gridworld.
 # Based on MiniGrid: https://github.com/maximecb/gym-minigrid.
+import random
 
 import gym
 import numpy as np
@@ -146,13 +147,10 @@ class MultiGrid:
 
         return sub_grid
 
-    def set(self, i, j, obj, i1=None, j1=None):
+    def set(self, i, j, obj):
         assert i >= 0 and i < self.width
         assert j >= 0 and j < self.height
         self.grid[i, j] = self.obj_reg.get_key(obj)
-
-        if (i1 is not None) and (j1 is not None):
-            self.grid[i1, j1] = self.obj_reg.get_key(EmptyGoal(color="yellow"))
 
     def get(self, i, j):
         assert i >= 0 and i < self.width
@@ -3610,6 +3608,7 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
         respawn=False,
         ghost_mode=True,
         heterogeneity=1,
+        coordination_level=1,
         agent_spawn_kwargs = {}
     ):
 
@@ -3711,8 +3710,6 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
         for agent in self.agents:
             agent.agents = []
             agent.reset(new_episode=True)
-            
-
 
         self._gen_grid(self.width, self.height)
 
@@ -4118,37 +4115,61 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
 
         return pos
 
+    def is_valid(self, pos):
+        try:
+            grid_obj = self.grid.get(*pos)
+        except:
+            # Should throw an error if the pos is out of the grid
+            return False
+
+        if grid_obj is None:
+            adj_positions = self.get_adjacents(pos)
+            for adj_pos in adj_positions:
+                try:
+                    adj_obj = self.grid.get(*adj_pos)
+                except:
+                    # If the adj_pos is out of the grid
+                    continue
+                
+                if isinstance(adj_obj, EmptyGoal):
+                    return False
+            return True
+        else:
+            return False
+
+    def get_adjacents(self, pos):
+        return random.shuffle([(pos[0], pos[1]+1), (pos[0], pos[1]-1), (pos[0]+1, pos[1]), (pos[0]-1, pos[1])])
+
     def try_place_compound_obj(self, obj, pos, top, bottom):
         ''' Try to place an object at a certain position in the grid.
         If it is possible, then do so and return True.
         Otherwise do nothing and return False. '''
-        # grid_obj: whatever object is already at pos.
-        pos1 = pos
-        # print(f'pos1 is: {pos1}')
-        # print(f'top is: {top}')
-        # print(f'bottom is: {bottom}')
+
+        visited = np.zeros_like(self.grid, dtype=np.bool)
+        visited[pos[0]][pos[1]] = True
+        coords = [pos]
+        q = [pos]
+
+        while len(coords) < self.coordination_level:
+            if len(q) == 0:
+                return False
+
+            anchor = q.pop(0)
+            adjs = self.get_adjacents(anchor)
+
+            for adj in adjs:
+                if visited[adj[0]][adj[1]] == False:
+                    if self.is_valid(adj):
+                        coords.append(adj)
+                        q.append(adj)
+                    visited[adj[0]][adj[1]] = True
         
-        if pos1[0] - 1 >= top[0]:
-            pos2 = (pos1[0] - 1, pos1[1])
-        elif pos1[1] - 1 >= top[1]:
-            pos2 = (pos1[0], pos1[1] - 1)
-        elif pos1[0] + 1 <= bottom[0]:
-            pos2 = (pos1[0] + 1, pos1[1])
-        elif pos1[1] + 1 <= bottom[1]:
-            pos2 = (pos1[0], pos1[1] + 1)
-        else:
-            return False
+        self.grid.set(*coords[0], obj)
 
-        # print(f'pos2 is: {pos2}')
+        for coord in coords[1:]:
+            self.grid.set(*coord, EmptyGoal(color="yellow"))
 
-        grid_obj1 = self.grid.get(*pos1)
-        grid_obj2 = self.grid.get(*pos2)
-
-        # If the target position is empty, then the object can always be placed.
-        if grid_obj1 is None and grid_obj2 is None:
-            self.grid.set(*pos1, obj, *pos2)
-            obj.set_position(pos1, pos2)
-            return True
+        return True
 
     def place_compound_obj(self, obj, top=(0,0), size=None, reject_fn=None, max_tries=1e5):
         max_tries = int(max(1, min(max_tries, 1e5)))

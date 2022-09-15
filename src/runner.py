@@ -352,8 +352,7 @@ class PGRunner:
             print(f"global_step={global_step}, episodic_return={total_rewards}")
             if self.use_comet:
                 self.exp.log_metric("episodic_return", total_rewards, global_step)
-            
-                        
+              
         mean_rewards = np.mean(agg_rewards)
         std_rewards = np.std(agg_rewards)
 

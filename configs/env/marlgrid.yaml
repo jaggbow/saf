@@ -4,6 +4,7 @@ rollout_threads: ${rollout_threads}
 continuous_action: ${continuous_action}
 obs_type: image
 params:
+  seed: ${seed}
   N: ${n_agents}
   max_cycles: ${env_steps}
   continuous_actions: ${env.continuous_action}

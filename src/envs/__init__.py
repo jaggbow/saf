@@ -41,6 +41,7 @@ def get_env(env_name, family, params):
                 view_size=params.view_size,
                 view_tile_size=params.view_tile_size,
                 view_offset=1,
+                seed=params.seed,
                 env_kwargs={
                     'clutter_density': params.clutter_density,
                     'n_bonus_tiles': params.num_goals,
@@ -60,6 +61,7 @@ def get_env(env_name, family, params):
                 view_size=params.view_size,
                 view_tile_size=params.view_tile_size,
                 view_offset=1,
+                seed=params.seed,
                 env_kwargs={
                     'clutter_density': params.clutter_density,
                     'n_bonus_tiles': params.num_goals,
@@ -80,6 +82,7 @@ def get_env(env_name, family, params):
                 view_size=params.view_size,
                 view_tile_size=params.view_tile_size,
                 view_offset=1,
+                seed=params.seed,
                 env_kwargs={
                     'coordination_level':params.coordination,
                     'heterogeneity':params.heterogeneity,
@@ -95,10 +98,12 @@ def get_env(env_name, family, params):
                 view_size=params.view_size,
                 view_tile_size=params.view_tile_size,
                 view_offset=1,
+                seed=params.seed,
                 env_kwargs={
                     'clutter_density': params.clutter_density,
                     'n_bonus_tiles': params.num_goals,
                     'heterogeneity': params.heterogeneity,
+                    'coordination_level': params.coordination,
                 }
             )
         else:
@@ -111,6 +116,7 @@ def get_env(env_name, family, params):
                 view_size=params.view_size,
                 view_tile_size=params.view_tile_size,
                 view_offset=1,
+                seed=params.seed,
                 env_kwargs={
                     'clutter_density': params.clutter_density,
                     'n_bonus_tiles': params.num_goals,

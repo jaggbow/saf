@@ -33,6 +33,7 @@ def register_marl_env(
     view_tile_size=8,
     view_offset=0,
     agent_color=None,
+    seed=None,
     env_kwargs={},
 ):
     # colors = ["red", "blue", "purple", "orange", "olive", "pink", "green", "white", "cyan", "custom1", "custom2", "custom3", "custom4", "custom5", "custom6"]
@@ -54,6 +55,7 @@ def register_marl_env(
                 ],
                 grid_size=grid_size,
                 max_steps=max_steps,
+                seed=seed,
                 **env_kwargs,
             )
             return instance
