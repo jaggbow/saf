@@ -2,12 +2,12 @@
 
 
 
-ProjectName="team_coordination_saf2"
+ProjectName="cg_coordination_saf2"
 conda_env="marl" # Set the name of your conda environment
 #ProjectName="test"
 
 
-declare -a All_Envs=("keyfortreasure") #"TeamSupportEnv" "TeamTogetherEnv" #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
+declare -a All_Envs=("CompoundGoalEnv") #"TeamSupportEnv" "TeamTogetherEnv" #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
 
 declare -a All_N_agents=(10)
 
@@ -49,10 +49,7 @@ do
 
 							for Seed in "${Seeds[@]}"
 							do
-
-
 								sbatch scripts/marlgrid/saf.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $conda_env
-
 							done
 						done
 					done

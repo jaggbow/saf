@@ -9,7 +9,7 @@ np.random.seed(4)
 register_marl_env(
     'CompoundGoalEnvironment',
     env_class,
-    n_agents=4,
+    n_agents=10,
     grid_size=7,
     max_steps=100,
     view_size=7,
