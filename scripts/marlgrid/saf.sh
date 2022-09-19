@@ -7,10 +7,6 @@
 #SBATCH --mem=65G                                     
 #SBATCH --time=23:50:00
 
-
-
-
-
 env=$1
 N_agents=$2
 Method=$3
@@ -20,10 +16,10 @@ use_policy_pool=$6
 latent_kl=$7
 seed=$8
 ProjectName=$9
+conda_env=${10}
 # 1. Load the required modules
 module --quiet load anaconda/3
-#conda activate marl
-conda activate PettingZoo
+conda activate ${conda_env}
 
 ExpName=${env}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${Method}"-"${use_policy_pool}"-"${latent_kl}"_"${seed}
 echo "doing experiment: ${ExpName}"

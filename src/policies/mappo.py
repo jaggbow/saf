@@ -366,6 +366,8 @@ class MAPPO(nn.Module):
         return metrics
     
     def save_checkpoints(self, checkpoint_dir):
+        if self.type == "conv":
+            torch.save(self.conv.state_dict(), os.path.join(checkpoint_dir, 'conv.pth'))
         if self.continuous_action: 
             torch.save(self.actor_mean.state_dict(), os.path.join(checkpoint_dir, 'actor_mean.pth'))
             torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
@@ -379,6 +381,8 @@ class MAPPO(nn.Module):
             torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
     
     def load_checkpoints(self, checkpoint_dir):
+        if self.type == "conv":
+            self.conv.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'conv.pth'), map_location=lambda storage, loc: storage))
         if self.continuous_action: 
             self.actor_mean.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor_mean.pth'), map_location=lambda storage, loc: storage))
             self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))

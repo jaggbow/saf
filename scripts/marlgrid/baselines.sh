@@ -7,8 +7,6 @@
 #SBATCH --mem=65G                                     
 #SBATCH --time=23:50:00
 
-
-
 #param_store=scripts/seeds.txt
 #seed=$(cat $param_store | awk -v var=$SLURM_ARRAY_TASK_ID 'NR==var {print $1}')
 env=$1
@@ -18,10 +16,10 @@ coordination=$4
 heterogeneity=$5
 seed=$6
 ProjectName=$7
+conda_env=$8
 # 1. Load the required modules
 module --quiet load anaconda/3
-#conda activate marl
-conda activate PettingZoo
+conda activate ${conda_env}
 
 ExpName=${env}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${Method}"_"${seed}
 echo "doing experiment: ${ExpName}"
