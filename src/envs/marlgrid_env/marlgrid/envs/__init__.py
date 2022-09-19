@@ -9,7 +9,7 @@ from .goaltile import ClutteredGoalTileEnv
 from .viz_test import VisibilityTestEnv
 from .goaltile_teamtogether import TeamTogetherEnv
 from .goaltile_teamsupport import TeamSupportEnv
-from .goaltile_compound import ClutteredCompoundGoalTileCoordinationHeterogeneityEnv
+from .goaltile_compound import CompoundGoalEnv
 from .keyfortreasure import keyfortreasure
 from .prisonbreak import PrisonBreakEnv
 from ..agents import GridAgentInterface
@@ -85,7 +85,7 @@ def get_env_class(env_name):
         'TeamSupportEnv':TeamSupportEnv,
         "PrisonBreakEnv":PrisonBreakEnv,
         "keyfortreasure":keyfortreasure,
-        'ClutteredCompoundGoalTileCoordinationHeterogeneityEnv': ClutteredCompoundGoalTileCoordinationHeterogeneityEnv,
+        'CompoundGoalEnv': CompoundGoalEnv,
     }
 
     return classes[env_name]
@@ -335,7 +335,7 @@ register_marl_env(
 
 register_marl_env(
     "GoaltileCompound-2Agents-3Goals-v0",
-    ClutteredCompoundGoalTileCoordinationHeterogeneityEnv,
+    CompoundGoalEnv,
     n_agents=2,
     grid_size=8,
     max_steps=20,

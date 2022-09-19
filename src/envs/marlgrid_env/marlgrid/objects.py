@@ -279,7 +279,7 @@ class Floor(WorldObj):
 
 
 class EmptySpace(WorldObj):
-    def can_verlap(self):
+    def can_overlap(self):
         return True
 
     def str_render(self, dir=0):
@@ -471,13 +471,12 @@ class EmptyGoal(WorldObj):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.reward = 0
-        self.state = True
 
     def can_overlap(self):
         return True
 
     def get_reward(self, agent):
-        return 0
+        return self.reward
 
     def str_render(self, dir=0):
         return "GG"
@@ -489,26 +488,24 @@ class CompoundGoalTile(WorldObj):
     def __init__(self, reward, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.reward = reward
-        self.state = True
         self.satellite_pos = []
+        self.delete_on_action = True
 
     def can_overlap(self):
         return True
 
     def get_reward(self, agent, satisfy=False):
-        if self.state and satisfy: # this reward can only be collected if k agents are on it simutaneously
-            self.state = False
-            self.color = "black"
+        if satisfy:
             return self.reward
         else:
             return 0
 
-    def set_position(self, pos1, pos2):
-        self.pos1 = pos1
-        self.satellite_pos.append(pos2)
+    def set_position(self, anchor_pos, satellite_pos):
+        self.pos = anchor_pos
+        self.satellite_pos = satellite_pos
     
     def str_render(self, dir=0):
-        return "GG"
+        return "CG"
 
     def render(self, img):
         fill_coords(img, point_in_rect(0, 1, 0, 1), COLORS[self.color])

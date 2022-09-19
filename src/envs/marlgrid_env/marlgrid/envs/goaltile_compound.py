@@ -1,17 +1,17 @@
-from ..base import MultiGrid, MultiGridEnv_coodinationNheterogeneityCompoundGoal
+from ..base import MultiGrid, MultiGridEnv_coodinationNheterogeneityCompoundGoal, MultiGridEnvCompoundGoal
 from ..objects import *
 
 
-class ClutteredCompoundGoalTileCoordinationHeterogeneityEnv(MultiGridEnv_coodinationNheterogeneityCompoundGoal):
+class CompoundGoalEnv(MultiGridEnv_coodinationNheterogeneityCompoundGoal):
     mission = "collect as many treasures as possible"
     metadata = {}
 
-    def __init__(self, *args, reward=1, penalty=0.0, n_clutter=None, clutter_density=None, n_bonus_tiles=3, initial_reward=True, cycle_reset=False, reset_on_mistake=False, reward_decay=False, coordination_level=1, heterogeneity=1, **kwargs):
+    def __init__(self, *args, reward=1, penalty=0.0, n_clutter=None, clutter_density=None, n_bonus_tiles=3, initial_reward=True, cycle_reset=False, reset_on_mistake=False, reward_decay=False, **kwargs):
         if (n_clutter is None) == (clutter_density is None):
             raise ValueError("Must provide n_clutter xor clutter_density in environment config.")
 
         # Overwrite the default reward_decay for goal cycle environments.
-        super().__init__(*args, **{**kwargs, 'reward_decay': reward_decay, "heterogeneity": heterogeneity})
+        super().__init__(*args, **{**kwargs, 'reward_decay': reward_decay})
 
         if clutter_density is not None:
             self.n_clutter = int(clutter_density * (self.width-2)*(self.height-2))
@@ -24,8 +24,6 @@ class ClutteredCompoundGoalTileCoordinationHeterogeneityEnv(MultiGridEnv_coodina
         self.initial_reward = initial_reward
         self.n_bonus_tiles = n_bonus_tiles
         self.reset_on_mistake = reset_on_mistake
-        self.coordination_level = coordination_level
-        self.heterogeneity = heterogeneity
         self.bonus_tiles = []
 
     def _gen_grid(self, width, height):
@@ -40,6 +38,7 @@ class ClutteredCompoundGoalTileCoordinationHeterogeneityEnv(MultiGridEnv_coodina
                 ),
                 max_tries=100
             )
+
         for _ in range(getattr(self, 'n_clutter', 0)):
             self.place_obj(Wall(), max_tries=100)
 

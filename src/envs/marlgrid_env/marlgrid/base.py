@@ -1,6 +1,7 @@
 # Multi-agent gridworld.
 # Based on MiniGrid: https://github.com/maximecb/gym-minigrid.
 import random
+import os
 
 import gym
 import numpy as np
@@ -9,7 +10,7 @@ from enum import IntEnum
 import math
 import warnings
 
-from .objects import WorldObj, Wall, Goal, Lava, GridAgent, BonusTile, BulkObj, EmptyGoal, COLORS,Key
+from .objects import CompoundGoalTile, WorldObj, Wall, Goal, Lava, GridAgent, BonusTile, BulkObj, EmptyGoal, COLORS,Key
 from .agents import GridAgentInterface
 # from .rendering import SimpleImageViewer
 from gym_minigrid.rendering import fill_coords, point_in_rect, downsample, highlight_img
@@ -63,7 +64,6 @@ class ObjectRegistry:
     #           in an attempt to speed things up. Probably didn't make a big difference.
     def obj_of_key(self, key):
         return self.key_to_obj_map[key]
-
 
 def rotate_grid(grid, rot_k):
     '''
@@ -150,6 +150,7 @@ class MultiGrid:
     def set(self, i, j, obj):
         assert i >= 0 and i < self.width
         assert j >= 0 and j < self.height
+        # print(f'Setting object {obj} at {(i, j)}')
         self.grid[i, j] = self.obj_reg.get_key(obj)
 
     def get(self, i, j):
@@ -809,9 +810,6 @@ class MultiGridEnv(gym.Env):
         #         self.window.imshow(img)
 
         # return img
-
-
-
 
 class MultiGridEnv_coodinationNheterogeneity(gym.Env):
     def __init__(
@@ -3643,11 +3641,12 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
         self.seed(seed=seed)
         self.agent_spawn_kwargs = agent_spawn_kwargs
         self.ghost_mode = ghost_mode
-        self.heterogeneity=heterogeneity
+        self.heterogeneity = heterogeneity
+        self.coordination_level = coordination_level
         self.agents = []
         for agent in agents:
             self.add_agent(agent)
-      
+
         ####list of colors
 
         self.COLORS = {
@@ -3683,7 +3682,6 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
 
         idexes=list(range(0,len(AllActions),500))
         self.AllActions=[AllActions[i] for i in idexes] 
-
 
         self.reset()
 
@@ -3855,8 +3853,12 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
 
         self.step_count += 1
 
+        # print(f'Process: {os.getpid()} | Agent positions before taking this step are:\n')
+        # print([agent.pos for agent in self.agents])
+        # print(f'Process: {os.getpid()} | Actions are: {actions}')
         iter_agents = list(enumerate(zip(self.agents, actions)))
         iter_order = np.arange(len(iter_agents))
+        # print(f'Process: {os.getpid()} | iter_order is: {iter_order}')
         self.np_random.shuffle(iter_order)
         for shuffled_ix in iter_order:
             agent_no, (agent, action) = iter_agents[shuffled_ix]
@@ -3879,12 +3881,13 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
 
                 # Move forward
                 elif action == agent.actions.forward:
+                    # print(f'Process: {os.getpid()} | Agent Number: {agent_no} | Action: {action} | Position: {agent.pos} | cur_cell: {cur_cell} | fwd_cell: {fwd_cell}')
                     # Under the follow conditions, the agent can move forward.
                     can_move = fwd_cell is None or fwd_cell.can_overlap()
                     if self.ghost_mode is False and isinstance(fwd_cell, GridAgent):
                         can_move = False
-
                     if can_move:
+                        # print(f'agent.agents is: {agent.agents}')
                         agent_moved = True
                         # Add agent to new cell
                         if fwd_cell is None:
@@ -3894,11 +3897,18 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
                             fwd_cell.agents.append(agent)
                             agent.pos = fwd_pos
 
+                        # print(f'agent.agents is: {agent.agents}')
+
                         # Remove agent from old cell
                         if cur_cell == agent:
+                            # print(f'Yes, current cell is an agent: {cur_cell}')
                             self.grid.set(*cur_pos, None)
+                            # print(f'agent.agents is: {agent.agents}')
+                            cc = self.grid.get(*cur_pos)
+                            # print(f'Cur cell now is: {cc}')
                         else:
                             assert cur_cell.can_overlap()
+                            # print(f'Process: {os.getpid()} | Type of cur_cell is: {type(cur_cell)}')
                             cur_cell.agents.remove(agent)
 
                         # Add agent's agents to old cell
@@ -3917,37 +3927,12 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
 
                         # Rewards can be got iff. fwd_cell has a "get_reward" method
 
-
                         if hasattr(fwd_cell, 'get_reward'):
-                            if  hasattr(fwd_cell, 'satellite_pos'):
-                                satellites_satisfied = 0
-                                for pos in fwd_cell.satellite_pos:
-                                    satellite_obj = self.grid.get(*pos)
-                                    if satellite_obj is None:
-                                        continue
-                                    if len(satellite_obj.agents) >= 1:
-                                        satellites_satisfied += 1
-
-                                if satellites_satisfied == len(fwd_cell.satellite_pos):
-                                    for pos in fwd_cell.satellite_pos:
-                                        satellite_obj = self.grid.get(*pos)
-                                        if satellite_obj is not None:
-                                            satellite_obj.state = False
-                                            satellite_obj.color = "black"
-
-                                    rwd = fwd_cell.get_reward(agent, True)
-                                else:
-                                    rwd = 0
-                            else:
-                                rwd = fwd_cell.get_reward(agent)
-                            
+                            rwd = fwd_cell.get_reward(agent)
                             if bool(self.reward_decay):
                                 rwd *= (1.0-0.9*(self.step_count/self.max_steps))
-      
                             step_rewards[agent_no] += rwd
                             agent.reward(rwd)
-                            
-
                         if isinstance(fwd_cell, (Lava, Goal)):
                             agent.done = True
 
@@ -3958,7 +3943,7 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
                     if hasattr(cur_cell, 'get_reward'):
                         rwd = cur_cell.get_reward(agent)
                         if bool(self.reward_decay):
-                            rwd *= (1.0-0.9*(self.step_count/self.max_steps))
+                            rwd *= (1.0-0.9*(self.step_count / self.max_steps))
                         step_rewards[agent_no] += rwd
                         agent.reward(rwd)
                     
@@ -4007,27 +3992,47 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
                 cur_pos = agent.pos[:]
                 cur_cell = self.grid.get(*cur_pos)
 
-                if hasattr(cur_cell, 'get_reward'):
+                if isinstance(cur_cell, CompoundGoalTile):
                     rwd = 0
-                    if hasattr(cur_cell, 'satellite_pos'):
-                        satellites_satisfied = 0
-                        for pos in cur_cell.satellite_pos:
-                            satellite_obj = self.grid.get(*pos)
-                            if satellite_obj is None:
-                                continue
-                            if len(satellite_obj.agents) >= 1:
-                                satellites_satisfied += 1
-                            
-                        if satellites_satisfied == len(cur_cell.satellite_pos):
-                            for pos in cur_cell.satellite_pos:
-                                satellite_obj = self.grid.get(*pos)
-                                if satellite_obj is not None:
-                                    satellite_obj.state = False
-                                    satellite_obj.color = "black"
+                    
+                    satellites_satisfied = 0
+                    for pos in cur_cell.satellite_pos:
+                        satellite_obj = self.grid.get(*pos)
+                        if satellite_obj is None:
+                            continue
+                        if len(satellite_obj.agents) >= 1:
+                            satellites_satisfied += 1
+                        
+                    if satellites_satisfied == len(cur_cell.satellite_pos):
+                        rwd = cur_cell.get_reward(agent, True)
 
-                            rwd = cur_cell.get_reward(agent, True)
-                        else:
-                            rwd = cur_cell.get_reward(agent, False)
+                        if cur_cell.delete_on_action:
+                            if hasattr(cur_cell, 'satellite_pos'):
+                                for pos in cur_cell.satellite_pos:
+                                    satellite_obj = self.grid.get(*pos)
+                                    bgs = satellite_obj.agents
+                                    self.grid.set(*pos, None)
+                                    for b in bgs:
+                                        sat_obj = self.grid.get(*pos)
+                                        if sat_obj is None:
+                                            self.grid.set(*pos, b)
+                                        else:
+                                            assert sat_obj.can_overlap()
+                                            sat_obj.agents.append(b)
+                                        b.pos = pos
+
+                            ags = cur_cell.agents
+                            self.grid.set(*cur_pos, None)
+                            for a in ags:
+                                cur_obj = self.grid.get(*cur_pos)
+                                if cur_obj is None:
+                                    self.grid.set(*cur_pos, a)
+                                else:
+                                    assert cur_obj.can_overlap()
+                                    cur_obj.agents.append(a)
+                                a.pos = cur_pos
+                    else:
+                        rwd = cur_cell.get_reward(agent, False)
 
                     if bool(self.reward_decay):
                         rwd *= (1.0-0.9*(self.step_count/self.max_steps))
@@ -4128,60 +4133,78 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
         return pos
 
     def is_valid(self, pos):
+        # print(f'Validating {pos}')
         try:
             grid_obj = self.grid.get(*pos)
         except:
             # Should throw an error if the pos is out of the grid
+            # print(f'Failed1')
             return False
 
         if grid_obj is None:
             adj_positions = self.get_adjacents(pos)
             for adj_pos in adj_positions:
+                # print(f'\tFor {pos}, trying adj_pos {adj_pos}')
                 try:
                     adj_obj = self.grid.get(*adj_pos)
+                    # print(f'\tadj_obj is: {adj_obj}')
                 except:
                     # If the adj_pos is out of the grid
                     continue
                 
-                if isinstance(adj_obj, EmptyGoal):
+                if isinstance(adj_obj, EmptyGoal) or isinstance(adj_obj, CompoundGoalTile):
+                    # print(f'Failed2')
                     return False
+
+            # print('Valid!')
             return True
         else:
+            # print(f'Failed3!')
             return False
 
     def get_adjacents(self, pos):
-        return random.shuffle([(pos[0], pos[1]+1), (pos[0], pos[1]-1), (pos[0]+1, pos[1]), (pos[0]-1, pos[1])])
+        adjs = [(pos[0], pos[1]+1), (pos[0], pos[1]-1), (pos[0]+1, pos[1]), (pos[0]-1, pos[1])]
+        np.random.shuffle(adjs)
+        return adjs
 
-    def try_place_compound_obj(self, obj, pos, top, bottom):
+    def try_place_compound_obj(self, obj, pos):
         ''' Try to place an object at a certain position in the grid.
         If it is possible, then do so and return True.
         Otherwise do nothing and return False. '''
-
-        visited = np.zeros_like(self.grid, dtype=np.bool)
-        visited[pos[0]][pos[1]] = True
-        coords = [pos]
-        q = [pos]
-
-        while len(coords) < self.coordination_level:
-            if len(q) == 0:
-                return False
-
-            anchor = q.pop(0)
-            adjs = self.get_adjacents(anchor)
-
-            for adj in adjs:
-                if visited[adj[0]][adj[1]] == False:
-                    if self.is_valid(adj):
-                        coords.append(adj)
-                        q.append(adj)
-                    visited[adj[0]][adj[1]] = True
         
-        self.grid.set(*coords[0], obj)
+        # print(f'Main position is: {pos}')
+        if self.is_valid(pos):
+            visited = np.zeros_like(self.grid.grid, dtype=bool)
+            visited[pos[0]][pos[1]] = True
+            coords = [pos]
+            q = [pos]
 
-        for coord in coords[1:]:
-            self.grid.set(*coord, EmptyGoal(color="yellow"))
+            while len(coords) < self.coordination_level:
+                if len(q) == 0:
+                    return False
 
-        return True
+                anchor = q.pop(0)
+                adjs = self.get_adjacents(anchor)
+
+                for adj in adjs:
+                    if visited[adj[0]][adj[1]] == False:
+                        visited[adj[0]][adj[1]] = True
+                        if self.is_valid(adj):
+                            coords.append(adj)
+                            q.append(adj)
+                            if len(coords) == self.coordination_level:
+                                break
+
+            self.grid.set(*coords[0], obj)
+
+            for coord in coords[1:]:
+                self.grid.set(*coord, EmptyGoal(color="yellow"))
+            
+            obj.set_position(coords[0], coords[1:])
+            # print(f'coords: {coords}')
+            return True
+        else:
+            return False
 
     def place_compound_obj(self, obj, top=(0,0), size=None, reject_fn=None, max_tries=1e5):
         max_tries = int(max(1, min(max_tries, 1e5)))
@@ -4196,10 +4219,10 @@ class MultiGridEnv_coodinationNheterogeneityCompoundGoal(gym.Env):
             if (reject_fn is not None) and reject_fn(pos):
                 continue
             else:
-                if self.try_place_compound_obj(obj, pos, top, bottom):
+                if self.try_place_compound_obj(obj, pos):
                     break
         else:
-            raise RecursionError("Rejection sampling failed in place_obj.")
+            raise RecursionError("Rejection sampling failed in place_compound_obj.")
 
         return pos
 

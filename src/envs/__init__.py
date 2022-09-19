@@ -106,7 +106,7 @@ def get_env(env_name, family, params):
                     'heterogeneity':params.heterogeneity,
                 }
             )
-        elif env_name == "ClutteredCompoundGoalTileCoordinationHeterogeneityEnv":
+        elif env_name == "CompoundGoalEnv":
             register_marl_env(
                 env_instance_name,
                 env_class,

@@ -1,78 +1,45 @@
-import marlgrid.envs
+from marlgrid.envs import register_marl_env, get_env_class
 import gym
-
-import warnings
-import random
-import hydra
-from omegaconf import DictConfig
-
-from src.envs import get_env
-from src.envs import ObstoStateWrapper, pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1, black_death_v3, PermuteObsWrapper, AddStateSpaceActMaskWrapper, ParallelEnv
-
-import numpy as np
-import torch
 import cv2
-warnings.simplefilter(action='ignore', category=FutureWarning)
-warnings.simplefilter(action='ignore', category=UserWarning)
-warnings.simplefilter(action='ignore', category=DeprecationWarning)
+import numpy as np
 
+env_class = get_env_class('CompoundGoalEnv')
+np.random.seed(4)
 
+register_marl_env(
+    'CompoundGoalEnvironment',
+    env_class,
+    n_agents=4,
+    grid_size=7,
+    max_steps=100,
+    view_size=7,
+    view_tile_size=8,
+    view_offset=1,
+    seed=4,
+    env_kwargs={
+        'clutter_density': 0.1,
+        'n_bonus_tiles': 2,
+        'heterogeneity': 1,
+        'coordination_level': 3,
+    }
+)
 
-@hydra.main(config_path="configs/", config_name="config.yaml")
-def main(cfg: DictConfig):
+env = gym.make('CompoundGoalEnvironment')
 
-    device = torch.device("cuda" if torch.cuda.is_available() and cfg.cuda else "cpu")
+obs = env.reset()
+img = env.grid.render(tile_size=100)
+cv2.imwrite('compoundgoal.png', img[:,:,[2,1,0]])
+print(env.grid)
+print(f'Agents are: {env.agents}')
+agent_pos = [agent.pos for agent in env.agents]
+print(agent_pos)
 
-    env_config=cfg.env
+actions = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 2, 2, 2], [0, 2, 2, 2], [0, 2, 2, 2], [2, 1, 1, 1], [2, 2, 2, 2], [2, 2, 2, 1], [1, 1, 1, 2], [2, 3, 3, 2], [2, 2, 2, 3], [2, 2, 2, 3], [2, 2, 2, 3]]
 
-    envs = [AddStateSpaceActMaskWrapper(PermuteObsWrapper(get_env(env_config.name, env_config.family, env_config.params))) for _ in range(env_config.rollout_threads)]
-    env = ParallelEnv(envs)
-    global obs
-    obs, state, act_masks=env.reset()
+for i, action in enumerate(actions):
+    _, r, _, _ = env.step(action)
+    print(f'Reward is: {r}')
+    img = env.grid.render(tile_size=100)
+    cv2.imwrite(f'compoundgoal_{i}.png', img[:,:,[2,1,0]])
 
-    for _ in range(1000):
-        actions =[]
-        for _ in range(cfg.rollout_threads):
-            actions=actions+[random.randint(0, 6) for _ in range(cfg.n_agents)]   
-        actions=np.array(actions)
-
-        # Taking a step in the environments
-        # r is a list (length = num_procs) of rewards for each environment
-        # reward for each environment is a list (length = num_agents) contaning reward for each agent
-        # d is a list of booleans (length = num_procs) indicating the end of the episode for each environment
-        obs, state, act_masks, reward, done, info = env.step(actions)
-        
-        # print("reward")
-        # print(reward[0][0])
-        # print("obs")
-        # print(obs.shape)
-        # print("reward")
-        # print(reward[0][0])
-
-        if reward[0][0]>0:
-            global obs_
-            obs_=obs
-            for agent in env.envs[0].agents:
-                print(agent.pos)
-            break
-
-
-
-        # for i in range(2):
-        #     cv2.imwrite("MARLGridExample"+str(i)+".png", torch.tensor(obs[i]).permute(1,2,0)[:,:,[2,1,0]].cpu().detach().numpy())
-        #     print("saving image")
-
-
-    
-if __name__ == '__main__':
-    main() 
-    # print("obs")
-    # print(obs)
-    # print(torch.tensor(obs[0]).permute(1,2,0).cpu().detach().numpy())
-
-    for i in range(2):
-        cv2.imwrite("MARLGridExample_agent_"+str(i)+"reward.png", torch.tensor(obs_[i]).permute(1,2,0)[:,:,[2,1,0]].cpu().detach().numpy())
-    
-
-
-    print("saving image")
+print(env.grid)
