@@ -30,13 +30,13 @@ echo "doing experiment: ${ExpName}"
 HYDRA_FULL_ERROR=1 python run.py \
 env=marlgrid  \
 env.name=${env} \
-env.params.max_steps=200 \
+env.params.max_steps=50 \
 env.params.coordination=${coordination} \
 env.params.heterogeneity=${heterogeneity} \
 seed=${seed} \
 n_agents=${N_agents} \
 env_steps=100 \
-env.params.num_goals=45 \
+env.params.num_goals=100 \
 experiment_name=${ExpName} \
 policy=${Method} \
 policy.params.type=conv \
