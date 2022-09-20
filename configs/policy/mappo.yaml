@@ -19,8 +19,8 @@ params:
   rollout_threads: ${rollout_threads}
   env_steps: ${env_steps}
   activation: tanh
-  shared_critic: False
-  shared_actor: False
+  shared_critic: True
+  shared_actor: True
   continuous_action: ${continuous_action}
   type: mlp
   conv_out_size: 64
