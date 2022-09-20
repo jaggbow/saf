@@ -1,4 +1,4 @@
-from ..base import MultiGrid, MultiGridEnv_coodinationNheterogeneityCompoundGoal, MultiGridEnvCompoundGoal
+from ..base import MultiGrid, MultiGridEnv_coodinationNheterogeneityCompoundGoal# MultiGridEnvCompoundGoal
 from ..objects import *
 
 

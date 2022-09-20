@@ -2,12 +2,12 @@
 
 
 
-ProjectName="cg_coordination_saf2"
+ProjectName="cg_coordination_saf_new"
 conda_env="marl" # Set the name of your conda environment
-#ProjectName="test"
+# #ProjectName="test"
 
 
-declare -a All_Envs=("CompoundGoalEnv") #"TeamSupportEnv" "TeamTogetherEnv" #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
+declare -a All_Envs=("keyfortreasure") #"TeamSupportEnv" "TeamTogetherEnv" #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
 
 declare -a All_N_agents=(10)
 
@@ -63,7 +63,7 @@ done
 
 
 
-ProjectName="team_heterogeneity_saf2"
+ProjectName="cg_heterogeneity_saf_new"
 #ProjectName="test"
 
 
@@ -125,10 +125,9 @@ done
 
 
 
-##different baselines at different levels of coordination for marlgrid
+#different baselines at different levels of coordination for marlgrid
 
-ProjectName="team_coordination_baselines2"
-#ProjectName="test"
+ProjectName="team_coordination_baselines_new"
 
 
 declare -a All_Envs=("keyfortreasure") #"TeamSupportEnv" "TeamTogetherEnv" #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
@@ -164,7 +163,7 @@ do
 					do
 
 
-						sbatch scripts/marlgrid/baselines.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
+						./scripts/marlgrid/baselines.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
 
 					done
 				done			
@@ -180,7 +179,7 @@ done
 
 # # #different baselines at different levels of heterogeneity for marlgrid
 
-ProjectName="team_heterogeneity_baselines2"
+ProjectName="team_heterogeneity_baselines_new"
 #ProjectName="test"
 
 

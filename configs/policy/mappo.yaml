@@ -20,7 +20,7 @@ params:
   env_steps: ${env_steps}
   activation: tanh
   shared_critic: False
-  shared_actor: True
+  shared_actor: False
   continuous_action: ${continuous_action}
   type: mlp
   conv_out_size: 64

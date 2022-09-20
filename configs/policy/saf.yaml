@@ -21,7 +21,7 @@ params:
   env_steps: ${env_steps}
   activation: tanh
   shared_critic: False
-  shared_actor: True
+  shared_actor: False
   use_policy_pool: ${use_policy_pool}
   use_SK: True 
   use_indepedance_reward: False
