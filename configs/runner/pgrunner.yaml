@@ -9,7 +9,7 @@ params:
   checkpoint_dir: null
   test_mode: ${test_mode}
   experiment_name: ${experiment_name}
-  save_dir:  outputs/${experiment_name}/ #$SCRATCH/
+  save_dir:  /home/mila/v/vedant.shah/scratch/heco/outputs/${experiment_name}/ #$SCRATCH/
   latent_kl: ${latent_kl}
   comet:
     project_name: corl

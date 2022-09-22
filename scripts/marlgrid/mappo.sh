@@ -1,34 +1,30 @@
 #!/bin/bash
 
-#SBATCH --job-name=saf_marlgrid
-#SBATCH --partition=long                        
-#SBATCH --cpus-per-task=2
+#SBATCH --job-name=marlgrid_baseline
+#SBATCH --partition=long
 #SBATCH --gres=gpu:rtx8000:1
 #SBATCH --mem=65G                                     
 #SBATCH --time=02-00:00:00
-#SBATCH --output=/network/scratch/v/vedant.shah/heco/slurms/saf-%j.out
+#SBATCH --output=/network/scratch/v/vedant.shah/heco/slurms/mappo-%j.out
 
+#param_store=scripts/seeds.txt
+#seed=$(cat $param_store | awk -v var=$SLURM_ARRAY_TASK_ID 'NR==var {print $1}')
 env=$1
 N_agents=$2
 Method=$3
 coordination=$4
 heterogeneity=$5
-use_policy_pool=$6
-latent_kl=$7
-seed=$8
-ProjectName=$9
-conda_env=${10}
+seed=$6
+ProjectName=$7
+conda_env=$8
 
 # 1. Load the required modules
 module --quiet load anaconda/3
 module load cuda/10.1
 conda activate ${conda_env}
 
-ExpName=${env}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${Method}"-"${use_policy_pool}"-"${latent_kl}"_"${seed}
+ExpName=${env}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${Method}"_"${seed}
 echo "doing experiment: ${ExpName}"
-
-
-
 
 HYDRA_FULL_ERROR=1 python run.py \
 env=marlgrid  \
@@ -47,11 +43,8 @@ policy.params.activation=tanh \
 policy.params.update_epochs=10 \
 policy.params.num_minibatches=1 \
 policy.params.learning_rate=0.0007 \
-policy.params.shared_actor=False \
-policy.params.shared_critic=False \
+policy.params.shared_actor=True \
+policy.params.shared_critic=True \
 policy.params.clip_vloss=True \
 runner.params.lr_decay=False \
-runner.params.comet.project_name=$ProjectName \
-use_policy_pool=${use_policy_pool} \
-latent_kl=${latent_kl} \
-
+runner.params.comet.project_name=$ProjectName

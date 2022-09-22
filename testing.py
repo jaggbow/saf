@@ -10,7 +10,7 @@ register_marl_env(
     'CompoundGoalEnvironment',
     env_class,
     n_agents=10,
-    grid_size=7,
+    grid_size=30,
     max_steps=100,
     view_size=7,
     view_tile_size=8,
@@ -18,9 +18,9 @@ register_marl_env(
     seed=4,
     env_kwargs={
         'clutter_density': 0.1,
-        'n_bonus_tiles': 2,
+        'n_bonus_tiles': 45,
         'heterogeneity': 1,
-        'coordination_level': 3,
+        'coordination_level': 5,
     }
 )
 
@@ -34,12 +34,12 @@ print(f'Agents are: {env.agents}')
 agent_pos = [agent.pos for agent in env.agents]
 print(agent_pos)
 
-actions = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 2, 2, 2], [0, 2, 2, 2], [0, 2, 2, 2], [2, 1, 1, 1], [2, 2, 2, 2], [2, 2, 2, 1], [1, 1, 1, 2], [2, 3, 3, 2], [2, 2, 2, 3], [2, 2, 2, 3], [2, 2, 2, 3]]
+# actions = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 2, 2, 2], [0, 2, 2, 2], [0, 2, 2, 2], [2, 1, 1, 1], [2, 2, 2, 2], [2, 2, 2, 1], [1, 1, 1, 2], [2, 3, 3, 2], [2, 2, 2, 3], [2, 2, 2, 3], [2, 2, 2, 3]]
 
-for i, action in enumerate(actions):
-    _, r, _, _ = env.step(action)
-    print(f'Reward is: {r}')
-    img = env.grid.render(tile_size=100)
-    cv2.imwrite(f'compoundgoal_{i}.png', img[:,:,[2,1,0]])
+# for i, action in enumerate(actions):
+#     _, r, _, _ = env.step(action)
+#     print(f'Reward is: {r}')
+#     img = env.grid.render(tile_size=100)
+#     cv2.imwrite(f'compoundgoal_{i}.png', img[:,:,[2,1,0]])
 
-print(env.grid)
+# print(env.grid)
