@@ -84,7 +84,7 @@
 
 ##different baselines at different levels of coordination for marlgrid
 
-ProjectName="cg_coordination_baselines2"
+# ProjectName="cg_coordination_baselines2"
 #ProjectName="test"
 
 
@@ -116,39 +116,39 @@ ProjectName="cg_coordination_baselines2"
 # done
 
 
-declare -a All_Envs=("CompoundGoalEnv") #"TeamSupportEnv" "TeamTogetherEnv" #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
-declare -a All_N_agents=(20)
-declare -a All_Methods=("ippo")
-declare -a All_coordination=(1 2 3 4 5)
-declare -a All_heterogeneity=(1)
-declare -a Seeds=(10 42 100)
+# declare -a All_Envs=("CompoundGoalEnv") #"TeamSupportEnv" "TeamTogetherEnv" #"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
+# declare -a All_N_agents=(20)
+# declare -a All_Methods=("ippo")
+# declare -a All_coordination=(1 2 3 4 5)
+# declare -a All_heterogeneity=(1)
+# declare -a Seeds=(10 42 100)
 
-for Env in "${All_Envs[@]}"
-do
-	for N_agents in "${All_N_agents[@]}"
-	do
-		for Method in "${All_Methods[@]}"
-		do
-			for coordination in "${All_coordination[@]}"
-			do
-				for heterogeneity in "${All_heterogeneity[@]}"
-				do					
+# for Env in "${All_Envs[@]}"
+# do
+# 	for N_agents in "${All_N_agents[@]}"
+# 	do
+# 		for Method in "${All_Methods[@]}"
+# 		do
+# 			for coordination in "${All_coordination[@]}"
+# 			do
+# 				for heterogeneity in "${All_heterogeneity[@]}"
+# 				do					
 
-					for Seed in "${Seeds[@]}"
-					do
-						sbatch scripts/marlgrid/ippo.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
-					done
-				done			
-			done
-		done
-	done
-done
+# 					for Seed in "${Seeds[@]}"
+# 					do
+# 						sbatch scripts/marlgrid/ippo.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
+# 					done
+# 				done			
+# 			done
+# 		done
+# 	done
+# done
 
 
 
 # # # #different baselines at different levels of heterogeneity for marlgrid
 
-# ProjectName="cg_heterogeneity_baselines2"
+ProjectName="cg_heterogeneity_baselines2"
 # #ProjectName="test"
 
 
@@ -179,29 +179,29 @@ done
 # 	done
 # done
 
-# declare -a All_Envs=("CompoundGoalEnv") #"TeamSupportEnv" "TeamTogetherEnv"#"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
-# declare -a All_N_agents=(20)
-# declare -a All_Methods=("ippo")
-# declare -a All_coordination=(1)
-# declare -a All_heterogeneity=(1 2 3 4 5)
-# declare -a Seeds=(10 42 100)
+declare -a All_Envs=("CompoundGoalEnv") #"TeamSupportEnv" "TeamTogetherEnv"#"ClutteredCompoundGoalTileCoordinationHeterogeneityEnv"
+declare -a All_N_agents=(20)
+declare -a All_Methods=("ippo")
+declare -a All_coordination=(1)
+declare -a All_heterogeneity=(1 2 3 4 5)
+declare -a Seeds=(10 42 100)
 
-# for Env in "${All_Envs[@]}"
-# do
-# 	for N_agents in "${All_N_agents[@]}"
-# 	do
-# 		for Method in "${All_Methods[@]}"
-# 		do
-# 			for coordination in "${All_coordination[@]}"
-# 			do
-# 				for heterogeneity in "${All_heterogeneity[@]}"
-# 				do					
-# 					for Seed in "${Seeds[@]}"
-# 					do
-# 						sbatch scripts/marlgrid/ippo.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
-# 					done
-# 				done			
-# 			done
-# 		done
-# 	done
-# done
+for Env in "${All_Envs[@]}"
+do
+	for N_agents in "${All_N_agents[@]}"
+	do
+		for Method in "${All_Methods[@]}"
+		do
+			for coordination in "${All_coordination[@]}"
+			do
+				for heterogeneity in "${All_heterogeneity[@]}"
+				do					
+					for Seed in "${Seeds[@]}"
+					do
+						sbatch scripts/marlgrid/ippo.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
+					done
+				done			
+			done
+		done
+	done
+done

@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #SBATCH --job-name=marlgrid_baseline
-#SBATCH --partition=long
-#SBATCH --gres=gpu:rtx8000:1
+#SBATCH --account=rrg-bengioy-ad
+#SBATCH --gres=gpu:1
 #SBATCH --mem=65G                                     
 #SBATCH --time=02-00:00:00
-#SBATCH --output=/network/scratch/v/vedant.shah/heco/slurms/ippo-%j.out
+#SBATCH --output=/home/veds12/scratch/saf/slurms/ippo-%j.out
 
 #param_store=scripts/seeds.txt
 #seed=$(cat $param_store | awk -v var=$SLURM_ARRAY_TASK_ID 'NR==var {print $1}')
@@ -19,9 +19,9 @@ ProjectName=$7
 conda_env=$8
 
 # 1. Load the required modules
-module --quiet load anaconda/3
-module load cuda/10.1
-conda activate ${conda_env}
+module load python/3
+source /home/veds12/scratch/venv/saf/bin/activate
+
 
 ExpName=${env}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${Method}"_"${seed}
 echo "doing experiment: ${ExpName}"
