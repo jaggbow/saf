@@ -74,6 +74,7 @@ def make_eval_env(env_config):
 
 @hydra.main(config_path="configs/", config_name="config.yaml")
 def main(cfg: DictConfig):
+    print('Hi in run')
     random.seed(cfg.seed)
     np.random.seed(cfg.seed)
     torch.manual_seed(cfg.seed)
@@ -108,6 +109,7 @@ def main(cfg: DictConfig):
     else:
         state_space = train_envs.state_space
 
+    print('Hi1 in run')
     policy = hydra.utils.instantiate(
         cfg.policy, 
         observation_space=observation_space, 
@@ -117,11 +119,13 @@ def main(cfg: DictConfig):
     
     policy = policy.to(device)
     
+    print('Hi2 in run')
     if cfg.env.obs_type == 'image' and cfg.policy.params.type == 'conv':
         buffer = ReplayBufferImageObs(observation_space, action_space, cfg.buffer, device)
     else:
         buffer = ReplayBuffer(observation_space, action_space, state_space, cfg.buffer, device)
         
+    print('Hi3 in run')
     runner = hydra.utils.instantiate(
         cfg.runner,
         train_env=train_envs,

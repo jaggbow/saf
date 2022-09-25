@@ -4,7 +4,7 @@
 #SBATCH --account=rrg-bengioy-ad
 #SBATCH --gres=gpu:1
 #SBATCH --mem=65G                                     
-#SBATCH --time=02-00:00:00
+#SBATCH --time=02-12:00:00
 #SBATCH --output=/home/veds12/scratch/saf/slurms/mappo-%j.out
 
 #param_store=scripts/seeds.txt
@@ -20,6 +20,7 @@ conda_env=$8
 
 # 1. Load the required modules
 module load python/3
+module load httpproxy
 source /home/veds12/scratch/venv/saf/bin/activate
 
 ExpName=${env}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${Method}"_"${seed}
@@ -27,6 +28,7 @@ echo "doing experiment: ${ExpName}"
 
 HYDRA_FULL_ERROR=1 python run.py \
 env=marlgrid  \
+rollout_threads=32 \
 env.name=${env} \
 env.params.max_steps=200 \
 env.params.coordination=${coordination} \

@@ -8,7 +8,7 @@ params:
   N: ${n_agents}
   max_cycles: ${env_steps}
   continuous_actions: ${env.continuous_action}
-  num_goals: 100
+  num_goals: 45
   grid_size: 30
   max_steps: 200
   view_size: 7
