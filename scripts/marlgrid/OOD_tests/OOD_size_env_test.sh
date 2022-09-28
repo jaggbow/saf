@@ -11,6 +11,11 @@
 #SBATCH -o /scratch/cristianmeo/output/waterworld-%A_%a.out  
 #SBATCH -e /scratch/cristianmeo/output/waterworld-%A_%a.err  
 
+# 1. Load the required modules
+#env_name=="TeamTogetherEnv"
+#env_name=="TeamSupportEnv"
+#env_name=="ClutteredGoalTileTeamsupportNHeterogneityEnv"
+
 module --quiet load anaconda/3
 conda activate MARL
 
@@ -23,16 +28,18 @@ use_policy_pool=$6
 latent_kl=$7
 seed=$8
 ProjectName=$9
+grid_size=${10}
 
-ExpName="OOD_coordination_test_"${env_name}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${policy}"-"${use_policy_pool}"-"${latent_kl}"_"${seed}
+ExpName="OOD_grid_size_test_"${env_name}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${policy}"-"${use_policy_pool}"-"${latent_kl}"_"${grid_size}"_"${seed}
 echo "doing experiment: ${ExpName}"
 
-HYDRA_FULL_ERROR=1 CUDA_LAUNCH_BLOCKING=1 python run.py \
+HYDRA_FULL_ERROR=1 python run.py \
 env=marlgrid \
 env.name=${env_name} \
 env.params.max_steps=50 \
 env.params.coordination=${coordination} \
 env.params.heterogeneity=${heterogeneity} \
+env.params.grid_size=${grid_size} \
 seed=${seed} \
 n_agents=${N_agents} \
 env_steps=50 \
@@ -46,9 +53,8 @@ policy.params.num_minibatches=1 \
 policy.params.learning_rate=0.0007 \
 policy.params.clip_vloss=True \
 runner.params.lr_decay=False \
-runner.params.checkpoint_dir="outputs/"${env_name}"_"${N_agents}"_"2"_"1"_"${policy}"-"${use_policy_pool}"-"${latent_kl}"_"${seed} \
+runner.params.checkpoint_dir="outputs/"${env_name}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${policy}"-"${use_policy_pool}"-"${latent_kl}"_"${seed} \
 runner.params.comet.project_name=$ProjectName \
 test_mode=True \
 latent_kl=${latent_kl} \
 use_policy_pool=${use_policy_pool} \
-

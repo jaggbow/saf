@@ -346,7 +346,10 @@ class PGRunner:
             else:
                 total_rewards = total_rewards.mean().item()
                 print(f"global_step={global_step}, episodic_return={total_rewards}")
-            
+                if self.use_comet:
+                    self.exp.log_metric("episodic_return", total_rewards, global_step)
+
+         
             agg_returns.append(total_rewards)
             if self.env_family == 'starcraft':
                 agg_winrate.append(episodic_wins)
@@ -357,7 +360,7 @@ class PGRunner:
         std_rewards = np.std(agg_returns)
 
         mean_wins = np.mean(agg_winrate)
-        std_wins = np.std(agg_winrate)
+        std_wins = np.std(agg_winrate)       
         
         return mean_rewards, std_rewards, mean_wins, std_wins
 

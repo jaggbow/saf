@@ -24,19 +24,19 @@ latent_kl=$7
 seed=$8
 ProjectName=$9
 
-ExpName="OOD_coordination_test_"${env_name}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${policy}"-"${use_policy_pool}"-"${latent_kl}"_"${seed}
+ExpName="OOD_heterogeneity_test_"${env_name}"_"${N_agents}"_"${coordination}"_"${heterogeneity}"_"${policy}"-"${use_policy_pool}"-"${latent_kl}"_"${seed}
 echo "doing experiment: ${ExpName}"
 
-HYDRA_FULL_ERROR=1 CUDA_LAUNCH_BLOCKING=1 python run.py \
+HYDRA_FULL_ERROR=1 python run.py \
 env=marlgrid \
 env.name=${env_name} \
-env.params.max_steps=50 \
+env.params.max_steps=200 \
 env.params.coordination=${coordination} \
 env.params.heterogeneity=${heterogeneity} \
 seed=${seed} \
 n_agents=${N_agents} \
-env_steps=50 \
-env.params.num_goals=100 \
+env_steps=100 \
+env.params.num_goals=45 \
 experiment_name=${ExpName} \
 policy=${policy} \
 policy.params.type=conv \
@@ -46,7 +46,7 @@ policy.params.num_minibatches=1 \
 policy.params.learning_rate=0.0007 \
 policy.params.clip_vloss=True \
 runner.params.lr_decay=False \
-runner.params.checkpoint_dir="outputs/"${env_name}"_"${N_agents}"_"2"_"1"_"${policy}"-"${use_policy_pool}"-"${latent_kl}"_"${seed} \
+runner.params.checkpoint_dir="outputs/"${env_name}"_"${N_agents}"_"1"_"2"_"${policy}"-"${use_policy_pool}"-"${latent_kl}"_"${seed} \
 runner.params.comet.project_name=$ProjectName \
 test_mode=True \
 latent_kl=${latent_kl} \
