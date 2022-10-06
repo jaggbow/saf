@@ -1,4 +1,4 @@
-# Coordinating Policies Among Multiple Agents via an Intelligent Communication Channel
+# Stateful Active Facilitator: Coordination and Environmental Heterogeneity in Cooperative Multi-Agent Reinforcement Learning
 
 ## Starcraft Installation
 [SMAC](https://github.com/oxwhirl/smac) is a gym environment based on [Stracraft II Machine Learning API](https://github.com/Blizzard/s2client-proto) and Deepmind's [PySC2](https://github.com/deepmind/pysc2) that was developped by [WhiRL](http://whirl.cs.ox.ac.uk/).
