@@ -18,6 +18,31 @@ Next, install the marlgrid environment by executing the following lines:
 cd src/envs/marlgrid_env/
 pip install -e .
 ```
+# Experiments
+You can find scripts to run experiments in the folder ``scripts``. It is structured as follows:
+```
+scripts/
+├── jobs_master_keyfortreasure.sh
+├── jobs_master_OOD.sh
+├── jobs_master_teamsupportenv.sh
+├── jobs_master_teamtogetherenv.sh
+├── OOD_tests
+│   ├── OOD_coordination_test_compoundenv.sh
+│   ├── OOD_coordination_test.sh
+│   ├── OOD_heco_test.sh
+│   ├── OOD_heterogeneity_test_compoundenv.sh
+│   ├── OOD_heterogeneity_test.sh
+│   ├── OOD_num_agents_test.sh
+│   ├── OOD_num_treasures_test.sh
+│   └── OOD_size_env_test.sh
+├── testing.sh
+└── training
+    ├── baselines.sh
+    └── saf.sh
+```
+In order to reproduce experimental results in the paper, you can run the appropriate ``jobs_master`` for the desired environment. For example, for the ``KeyForTreasure``, that would be ``jobs_master_keyfortreasure.sh``.
+
+If you want to run our algorithm on your environments, you can check the structure of ``saf.sh`` in ``scripts/training`` folder.
 # Comet Configuration
 [comet.ml](https://www.comet.com/site/) is a great tool for tracking and logging experiments as well as running hyperparameter sweeps.
 
