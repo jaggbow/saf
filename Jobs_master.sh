@@ -25,7 +25,7 @@ declare -a All_use_policy_pool=(True False)
 declare -a All_latent_kl=(True False)
 
 
-Seeds=($(seq 1 1 1))
+Seeds=($(seq 1 1 3))
 
 
 
@@ -85,7 +85,7 @@ declare -a All_use_policy_pool=(True False)
 declare -a All_latent_kl=(True False)
 
 
-Seeds=($(seq 1 1 1))
+Seeds=($(seq 1 1 3))
 
 
 
@@ -143,7 +143,7 @@ declare -a All_coordination=(1 2 3 4 5)
 declare -a All_heterogeneity=(1)
 
 
-Seeds=($(seq 1 1 1))
+Seeds=($(seq 1 1 3))
 
 
 
@@ -163,7 +163,7 @@ do
 					do
 
 
-						./scripts/marlgrid/baselines.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
+						sbatch scripts/marlgrid/baselines.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
 
 					done
 				done			
@@ -196,7 +196,7 @@ declare -a All_coordination=(1)
 
 declare -a All_heterogeneity=(1 2 3 4 5)
 
-Seeds=($(seq 1 1 1))
+Seeds=($(seq 1 1 3))
 
 
 
