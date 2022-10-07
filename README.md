@@ -1,6 +1,6 @@
 # Stateful Active Facilitator: Coordination and Environmental Heterogeneity in Cooperative Multi-Agent Reinforcement Learning
 
-This is the official repository to the paper "Stateful Active Facilitator: Coordination and Environmental Heterogeneity in Cooperative Multi-Agent Reinforcement Learning"
+This is the official repository to the paper ["Stateful Active Facilitator: Coordination and Environmental Heterogeneity in Cooperative Multi-Agent Reinforcement Learning"](https://arxiv.org/abs/2210.03022)
 
 In this paper, we tackle the coordination and environmental heterogeneity characteristics that are present in real-life scenarios. To be able to understand how existing MARL algorithms fare in environments with high levels of coordination and/or environmental heterogeneity, we introduce a suite of environments called **HECOGrid**, where users can manually tune the level of coordination and environmental heterogeneity in the provided environments.
 
