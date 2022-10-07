@@ -109,7 +109,7 @@ class IPPO(nn.Module):
         
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5)
 
-    def get_value(self, x, state=None):
+    def get_value(self, x, state=None, z=None):
         """
         Args:
             x: [batch_size, n_agents, obs_shape]
@@ -118,12 +118,12 @@ class IPPO(nn.Module):
             value: [batch_size, n_agents]
         """
         
-        if self.type == 'conv':
-            bs = x.shape[0]
-            n_ags = x.shape[1]
-            x = x.reshape((-1,)+self.obs_shape)
-            x = self.conv(x)
-            x = x.reshape(bs, n_ags, self.input_shape)
+        # if self.type == 'conv':
+        #     bs = x.shape[0]
+        #     n_ags = x.shape[1]
+        #     x = x.reshape((-1,)+self.obs_shape)
+        #     x = self.conv(x)
+        #     x = x.reshape(bs, n_ags, self.input_shape)
 
         values = []
         for i in range(self.n_agents): 
@@ -134,7 +134,7 @@ class IPPO(nn.Module):
         values = torch.stack(values, dim=1).squeeze(-1)
         return values
 
-    def get_action_and_value(self, x, state=None, action_mask=None, actions=None):
+    def get_action_and_value(self, x, state=None, action_mask=None, actions=None, obs_old=None):
         """
         Args:
             x: [batch_size, n_agents, obs_shape]
@@ -148,7 +148,7 @@ class IPPO(nn.Module):
             value: [batch_size, n_agents]
         """
         
-        value = self.get_value(x)
+
         
         if self.type == 'conv':
             bs = x.shape[0]
@@ -205,8 +205,9 @@ class IPPO(nn.Module):
         out_actions = torch.stack(out_actions, dim=1)
         logprobs = torch.stack(logprobs, dim=1)
         entropies = torch.stack(entropies, dim=1)
+        value = self.get_value(x)
         
-        return out_actions, logprobs, entropies, value
+        return out_actions, logprobs, entropies, value, None
     
     def update_lr(self, step, total_steps):
         frac = 1.0 - (step - 1.0) / total_steps
@@ -285,9 +286,9 @@ class IPPO(nn.Module):
                 mb_inds = b_inds[start:end]
                 
                 if self.continuous_action:
-                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, None, b_actions[mb_inds])
+                    _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], None, None, b_actions[mb_inds])
                 else:
-                    _, newlogprob, entropy, newvalue = self.get_action_and_value(b_obs[mb_inds], None, b_action_masks[mb_inds], b_actions.long()[mb_inds])
+                    _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], None, b_action_masks[mb_inds], b_actions.long()[mb_inds])
                 
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
@@ -350,6 +351,8 @@ class IPPO(nn.Module):
         return metrics
 
     def save_checkpoints(self, checkpoint_dir):
+        if self.type == "conv":
+            torch.save(self.conv.state_dict(), os.path.join(checkpoint_dir, 'conv.pth'))
         if self.continuous_action: 
             torch.save(self.actor_mean.state_dict(), os.path.join(checkpoint_dir, 'actor_mean.pth'))
             torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
@@ -363,6 +366,8 @@ class IPPO(nn.Module):
             torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
     
     def load_checkpoints(self, checkpoint_dir):
+        if self.type == "conv":
+            self.conv.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'conv.pth'), map_location=lambda storage, loc: storage))
         if self.continuous_action: 
             self.actor_mean.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor_mean.pth'), map_location=lambda storage, loc: storage))
             self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))

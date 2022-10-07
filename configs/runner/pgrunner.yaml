@@ -1,12 +1,16 @@
 _target_: src.runner.PGRunner
 params:
-  total_timesteps: 20_000_000
+  total_timesteps: 10_000_000
   rollout_threads: ${rollout_threads}
   env_steps: ${env_steps}
   lr_decay: True
   n_agents: ${n_agents}
   eval_episodes: 32
   checkpoint_dir: null
-  save_dir: $SCRATCH/saf/$SLURM_JOB_ID/
+  test_mode: ${test_mode}
+  experiment_name: ${experiment_name}
+  save_dir:  outputs/${experiment_name}/ #$SCRATCH/
+  latent_kl: ${latent_kl}
   comet:
     project_name: corl
+    experiment_name: ${experiment_name}

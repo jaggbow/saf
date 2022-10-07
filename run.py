@@ -15,7 +15,7 @@ import hydra
 from omegaconf import DictConfig
 
 from src.envs import get_env
-from src.envs import ObstoStateWrapper, pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1, black_death_v3, PermuteObsWrapper, AddStateSpaceActMaskWrapper, CooperativeRewardsWrapper,ParallelEnv
+from src.envs import ObstoStateWrapper, pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1, black_death_v3, PermuteObsWrapper, AddStateSpaceActMaskWrapper, CooperativeRewardsWrapper, ParallelEnv
 from src.replay_buffer import ReplayBuffer, ReplayBufferImageObs
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -53,7 +53,7 @@ def make_train_env(env_config):
 def make_eval_env(env_config):
     
     if env_config.family == 'marlgrid':
-        envs = [AddStateSpaceActMaskWrapper(PermuteObsWrapper(get_env(env_config.name, env_config.family, env_config.params))) for _ in range(env_config.rollout_threads)]
+        envs = [AddStateSpaceActMaskWrapper(PermuteObsWrapper(get_env(env_config.name, env_config.family, env_config.params))) for _ in range(1)]
         env = ParallelEnv(envs)
         return env
 
@@ -134,6 +134,7 @@ def main(cfg: DictConfig):
     
     if not cfg.test_mode:
         runner.run()
+
     mean_rewards, std_rewards, mean_wins, std_wins = runner.evaluate()
     print(f"Eval Rewards: {mean_rewards} +- {std_rewards} | Eval Win Rate: {mean_wins} +- {std_wins}")
     train_envs.close()

@@ -1,26 +1,36 @@
-_target_: src.policies.mappo.MAPPO
+_target_: src.policies.saf.SAF
 params:
   n_layers: 2
+  n_layers_perceiver: 2
   hidden_dim: 128
-  learning_rate: 0.0005
+  learning_rate: 0.0003
   gamma: 0.99
   gae_lambda: 0.95
-  gae: True
+  gae: False
   n_agents: ${n_agents}
   ent_coef: 0.01
   vf_coef: 0.5
   norm_adv: True
   clip_coef: 0.2
   clip_vloss: True
-  max_grad_norm: 10
+  max_grad_norm: 9
   target_kl: null
   update_epochs: 10
   num_minibatches: 1
   rollout_threads: ${rollout_threads}
   env_steps: ${env_steps}
   activation: tanh
-  shared_critic: True
-  shared_actor: True
+  shared_critic: False
+  shared_actor: False
+  use_policy_pool: ${use_policy_pool}
+  use_SK: True 
+  use_indepedance_reward: False
+  N_SK_slots: 4
+  n_policy: 4
+  indepedence_coef: 0.01
   continuous_action: ${continuous_action}
+  action_std_init: 0.005
+  latent_kl: ${latent_kl}
+  latent_dim: 8
   type: mlp
   conv_out_size: 64

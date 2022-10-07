@@ -7,8 +7,11 @@ from .cluttered import ClutteredMultiGrid
 from .goalcycle import ClutteredGoalCycleEnv
 from .goaltile import ClutteredGoalTileEnv
 from .viz_test import VisibilityTestEnv
-from .goaltile_coordination import ClutteredGoalTileCoordinationEnv
-
+from .goaltile_teamtogether import TeamTogetherEnv
+from .goaltile_teamsupport import TeamSupportEnv
+from .goaltile_compound import CompoundGoalEnv
+from .keyfortreasure import keyfortreasure
+from .prisonbreak import PrisonBreakEnv
 from ..agents import GridAgentInterface
 from gym.envs.registration import register as gym_register
 
@@ -30,6 +33,7 @@ def register_marl_env(
     view_tile_size=8,
     view_offset=0,
     agent_color=None,
+    seed=None,
     env_kwargs={},
 ):
     # colors = ["red", "blue", "purple", "orange", "olive", "pink", "green", "white", "cyan", "custom1", "custom2", "custom3", "custom4", "custom5", "custom6"]
@@ -51,6 +55,7 @@ def register_marl_env(
                 ],
                 grid_size=grid_size,
                 max_steps=max_steps,
+                seed=seed,
                 **env_kwargs,
             )
             return instance
@@ -67,6 +72,7 @@ def env_from_config(env_config, randomize_seed=True):
     env_class = possible_envs[env_config['env_class']]
     
     env_kwargs = {k:v for k,v in env_config.items() if k != 'env_class'}
+
     if randomize_seed:
         env_kwargs['seed'] = env_kwargs.get('seed', 0) + random.randint(0, 1337*1337)
     
@@ -75,7 +81,11 @@ def env_from_config(env_config, randomize_seed=True):
 def get_env_class(env_name):
     classes = {
         'ClutteredGoalTileEnv': ClutteredGoalTileEnv,
-        'ClutteredGoalTileCoordinationEnv': ClutteredGoalTileCoordinationEnv,
+        'TeamTogetherEnv': TeamTogetherEnv,
+        'TeamSupportEnv':TeamSupportEnv,
+        "PrisonBreakEnv":PrisonBreakEnv,
+        "keyfortreasure":keyfortreasure,
+        'CompoundGoalEnv': CompoundGoalEnv,
     }
 
     return classes[env_name]
@@ -96,6 +106,7 @@ def get_env_class(env_name):
 #     n_agents=3,
 #     grid_size=11,
 #     view_size=7,
+#     max_steps=20,
 #     env_kwargs={'clutter_density':0.15}
 # )
 
@@ -121,15 +132,16 @@ def get_env_class(env_name):
 # )
 
 # register_marl_env(
-#     "Goalcycle-demo-solo-v0", 
+#     "Goalcycle-demo-two-v0", 
 #     ClutteredGoalCycleEnv, 
-#     n_agents=1, 
-#     grid_size=13,
+#     n_agents=2, 
+#     grid_size=7,
 #     view_size=7,
 #     view_tile_size=5,
 #     view_offset=1,
+#     max_steps=20,
 #     env_kwargs={
-#         'clutter_density':0.1,
+#         'clutter_density':0.0,
 #         'n_bonus_tiles': 3
 #     }
 # )
@@ -262,6 +274,21 @@ def get_env_class(env_name):
 # )
 
 register_marl_env(
+    "Goaltile-2Agents-100Goals-v0",
+    ClutteredGoalTileEnv,
+    n_agents=2,
+    grid_size=30,
+    max_steps=150,
+    view_size=7,
+    view_tile_size=8,
+    view_offset=1,
+    env_kwargs={
+        'clutter_density':0.1,
+        'n_bonus_tiles': 100,
+    }
+)
+
+register_marl_env(
     "Goaltile-20Agents-100Goals-v0",
     ClutteredGoalTileEnv,
     n_agents=20,
@@ -306,19 +333,50 @@ register_marl_env(
     }
 )
 
-
 register_marl_env(
-    "CoordinationGoaltile-5Agents-20Goals-2coordination-v1",
-    ClutteredGoalTileCoordinationEnv,
-    n_agents=5,
-    grid_size=7,
-    max_steps=150,
+    "GoaltileCompound-2Agents-3Goals-v0",
+    CompoundGoalEnv,
+    n_agents=2,
+    grid_size=8,
+    max_steps=20,
     view_size=7,
-    view_tile_size=16,
+    view_tile_size=8,
     view_offset=1,
     env_kwargs={
-        'clutter_density':0.2,
-        'n_bonus_tiles': 20,
-        'coordination_level':2,
+        'clutter_density': 0.1,
+        'n_bonus_tiles': 3,
+        'heterogeneity':1,
+    }
+)
+
+
+
+
+register_marl_env(
+    "PrisonBreakEnv-10Agents-v1",
+    PrisonBreakEnv,
+    n_agents=10,
+    grid_size=30,
+    max_steps=150,
+    view_size=7,
+    view_tile_size=8,
+    view_offset=1,
+    env_kwargs={
+    }
+)
+
+
+register_marl_env(
+    "keyfortreasure-10Agents-v1",
+    keyfortreasure,
+    n_agents=10,
+    grid_size=30,
+    max_steps=150,
+    view_size=7,
+    view_tile_size=8,
+    view_offset=1,
+    env_kwargs={
+            'clutter_density':0.2,
+            'n_bonus_tiles': 100,
     }
 )

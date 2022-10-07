@@ -1,79 +1,49 @@
 # Stateful Active Facilitator: Coordination and Environmental Heterogeneity in Cooperative Multi-Agent Reinforcement Learning
 
-## Starcraft Installation
-[SMAC](https://github.com/oxwhirl/smac) is a gym environment based on [Stracraft II Machine Learning API](https://github.com/Blizzard/s2client-proto) and Deepmind's [PySC2](https://github.com/deepmind/pysc2) that was developped by [WhiRL](http://whirl.cs.ox.ac.uk/).
+This is the official repository to the paper "Stateful Active Facilitator: Coordination and Environmental Heterogeneity in Cooperative Multi-Agent Reinforcement Learning"
 
-### SMAC
-First, start by installing SMAC:
+In this paper, we tackle the coordination and environmental heterogeneity characteristics that are present in real-life scenarios. To be able to understand how existing MARL algorithms fare in environments with high levels of coordination and/or environmental heterogeneity, we introduce a suite of environments called **HECOGrid**, where users can manually tune the level of coordination and environmental heterogeneity in the provided environments.
 
-```
-pip install git+https://github.com/oxwhirl/smac.git
-```
-### StarCraft II
-Next download [StarCraft II](https://github.com/Blizzard/s2client-proto#downloads). Here we'll download the latest version ``SC2.4.10`` and unzip it:
+To tackle the difficulty in learning that comes with high levels of coordination and/or environmental heterogeneity, we introduce a new model: the **Stateful Active Facilitator** which has a differentiable communication channel that allows agents to efficiently communicate during training to improve coordination, as well as a pool of policies that they can choose from in order to be resilient to increasing levels of environmental heterogeneity
+![Stateful Active Faciliator](/assets/saf.jpg "Stateful Active Faciliator")
+![HECOGrid](/assets/hecogrid.jpg "HECOGrid")
 
+# Setup
+Start by installing the required modules:
 ```
-wget https://blzdistsc2-a.akamaihd.net/Linux/SC2.4.10.zip
-unzip -P iagreetotheeula SC2.4.10.zip
+pip install -r requirements.txt
 ```
-Now, we save the path to ``StarCraftII`` as an environment variable ``$SC2PATH``:
+Next, install the marlgrid environment by executing the following lines:
+```
+cd src/envs/marlgrid_env/
+pip install -e .
+```
+# Experiments
+You can find scripts to run experiments in the folder ``scripts``. It is structured as follows:
+```
+scripts/
+├── jobs_master_keyfortreasure.sh
+├── jobs_master_OOD.sh
+├── jobs_master_teamsupportenv.sh
+├── jobs_master_teamtogetherenv.sh
+├── OOD_tests
+│   ├── OOD_coordination_test_compoundenv.sh
+│   ├── OOD_coordination_test.sh
+│   ├── OOD_heco_test.sh
+│   ├── OOD_heterogeneity_test_compoundenv.sh
+│   ├── OOD_heterogeneity_test.sh
+│   ├── OOD_num_agents_test.sh
+│   ├── OOD_num_treasures_test.sh
+│   └── OOD_size_env_test.sh
+├── testing.sh
+└── training
+    ├── baselines.sh
+    └── saf.sh
+```
+In order to reproduce experimental results in the paper, you can run the appropriate ``jobs_master`` for the desired environment. For example, for the ``KeyForTreasure``, that would be ``jobs_master_keyfortreasure.sh``.
 
-```
-echo "export SC2PATH=~/StarCraftII/" > ~/.bashrc
-```
-### SMAC Maps
-We're almost there! We just need to donwload the SMAC maps and put them in  ``$SC2PATH/Maps/``:
-
-```
-cd $SC2PATH/Maps/
-wget https://github.com/oxwhirl/smac/releases/download/v0.1-beta1/SMAC_Maps.zip
-unzip SMAC_Maps.zip
-rm -rf SMAC_Maps.zip
-```
-
-To test if everything is working as expected, run the following command to view the SMAC maps:
-
-```
-python -m smac.bin.map_list
-```
-Which should give the following output:
-
-```
-Name            Agents  Enemies Limit  
-3m              3       3       60     
-8m              8       8       120    
-25m             25      25      150    
-5m_vs_6m        5       6       70     
-8m_vs_9m        8       9       120    
-10m_vs_11m      10      11      150    
-27m_vs_30m      27      30      180    
-MMM             10      10      150    
-MMM2            10      12      180    
-2s3z            5       5       120    
-3s5z            8       8       150    
-3s5z_vs_3s6z    8       9       170    
-3s_vs_3z        3       3       150    
-3s_vs_4z        3       4       200    
-3s_vs_5z        3       5       250    
-1c3s5z          9       9       180    
-2m_vs_1z        2       1       150    
-corridor        6       24      400    
-6h_vs_8z        6       8       150    
-2s_vs_1sc       2       1       300    
-so_many_baneling 7       32      100    
-bane_vs_bane    24      24      200    
-2c_vs_64zg      2       64      400    
-```
-To make sure everything is properly installed, run the following command:
-
-```
-python -m smac.examples.random_agents
-```
-
-Now, you're ready to run experiments on SMAC maps!
-
-These instructions are based on the [original repository](https://github.com/oxwhirl/smac) and this [repository](https://github.com/marlbenchmark/on-policy).
-## Comet Configuration
+If you want to run our algorithm on your environments, you can check the structure of ``saf.sh`` in ``scripts/training`` folder.
+# Comet Configuration
 [comet.ml](https://www.comet.com/site/) is a great tool for tracking and logging experiments as well as running hyperparameter sweeps.
 
 In order to get started, make sure you [create an account](https://www.comet.com/signup) on their website (you can sign up using your github account!). Once that is done, you'll receive your ``API_KEY``.
@@ -112,3 +82,4 @@ experiment = Experiment(project_name="pytorch") # No need to explicitly provide 
 ```
 
 For more information, you can check the [documentation](https://www.comet.com/docs/python-sdk/pytorch/).
+
