@@ -43,6 +43,7 @@ class PGRunner:
             self.action_space = train_env.action_space
         
         test_mode = params.test_mode
+
         self.train_env = train_env
         self.eval_env = eval_env
         self.buffer = buffer
@@ -247,8 +248,7 @@ class PGRunner:
                 self.save_checkpoints(self.save_dir)
                 best_return = total_rewards
 
-            with torch.no_grad():
-     
+            with torch.no_grad():     
                 if self.policy_type =='conv':
                     bs = next_obs.shape[0]
                     n_ags = next_obs.shape[1]
@@ -265,6 +265,7 @@ class PGRunner:
                     next_z = None    
 
                 next_value = self.policy.get_value(next_obs, next_state, next_z)
+
                 advantages, returns = self.policy.compute_returns(self.buffer, next_value, next_done)
                 
 
