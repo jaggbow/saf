@@ -3,7 +3,10 @@
 This is the official repository to the paper "Stateful Active Facilitator: Coordination and Environmental Heterogeneity in Cooperative Multi-Agent Reinforcement Learning"
 
 In this paper, we tackle the coordination and environmental heterogeneity characteristics that are present in real-life scenarios. To be able to understand how existing MARL algorithms fare in environments with high levels of coordination and/or environmental heterogeneity, we introduce a suite of environments called **HECOGrid**, where users can manually tune the level of coordination and environmental heterogeneity in the provided environments.
+
 To tackle the difficulty in learning that comes with high levels of coordination and/or environmental heterogeneity, we introduce a new model: the **Stateful Active Facilitator** which has a differentiable communication channel that allows agents to efficiently communicate during training to improve coordination, as well as a pool of policies that they can choose from in order to be resilient to increasing levels of environmental heterogeneity
+![Stateful Active Faciliator](/assets/saf.jpg "Stateful Active Faciliator")
+![HECOGrid](/assets/hecogrid.jpg "HECOGrid")
 
 # Setup
 Start by installing the required modules:
