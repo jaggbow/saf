@@ -59,7 +59,6 @@ class PGRunner:
                 api_key_path= Path(self.checkpoint_dir)/Path('apy_key.txt')
                 
                 with open(api_key_path) as f:
-                    #self.exp = comet_ml.Experiment(api_key="qXdTq22JXVov2VvqWgZBj4eRr",project_name=params.comet.project_name)
                     self.exp_api_key = f.readlines()
                 # Check to see if there is a key in environment:
                 EXPERIMENT_KEY = os.environ.get("COMET_EXPERIMENT_KEY", self.exp_api_key[0])
@@ -67,7 +66,7 @@ class PGRunner:
                 # First, let's see if we continue or start fresh:
                 if (EXPERIMENT_KEY is not None):
                     # There is one, but the experiment might not exist yet:
-                    api = comet_ml.API(api_key="AIxlnGNX5bfAXGPOMAWbAymIz") # Assumes API key is set in config/env
+                    api = comet_ml.API() # Assumes API key is set in config/env
                     try:
                         api_experiment = api.get_experiment_by_key(EXPERIMENT_KEY)
                     except Exception:
@@ -82,9 +81,7 @@ class PGRunner:
                 print("Loading model from", self.checkpoint_dir)
                 self.load_checkpoints(self.checkpoint_dir)
             if self.use_comet:
-                # self.exp = comet_ml.Experiment(api_key="AIxlnGNX5bfAXGPOMAWbAymIz", project_name=params.comet.project_name)
-                # self.exp.set_name(f"{policy.__class__.__name__}_{os.environ['SLURM_JOB_ID']}")
-                self.exp = comet_ml.Experiment(api_key="AIxlnGNX5bfAXGPOMAWbAymIz",project_name=params.comet.project_name)
+                self.exp = comet_ml.Experiment(project_name=params.comet.project_name)
                 self.exp.set_name(params.comet.experiment_name)
                 self.exp_key = self.exp.get_key()
 
