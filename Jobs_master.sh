@@ -49,7 +49,7 @@ do
 
 							for Seed in "${Seeds[@]}"
 							do
-								sbatch scripts/marlgrid/saf.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $conda_env
+								sbatch scripts/saf.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $conda_env
 							done
 						done
 					done
@@ -111,7 +111,7 @@ do
 							do
 
 
-								sbatch scripts/marlgrid/saf.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $conda_env
+								sbatch scripts/saf.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $conda_env
 
 							done
 						done
@@ -163,7 +163,7 @@ do
 					do
 
 
-						sbatch scripts/marlgrid/baselines.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
+						sbatch scripts/baselines.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
 
 					done
 				done			
@@ -216,7 +216,7 @@ do
 					do
 
 
-						sbatch scripts/marlgrid/baselines.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
+						sbatch scripts/baselines.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
 
 					done
 				done			

@@ -55,7 +55,7 @@ Seeds=(1)
 #							do
 #								for Seed in "${Seeds[@]}"
 #								do
-#									sbatch scripts/marlgrid/OOD_tests/OOD_size_env_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $grid_size
+#									sbatch scripts/OOD_tests/OOD_size_env_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $grid_size
 #								done
 #							done
 #						done
@@ -86,7 +86,7 @@ Seeds=(1)
 #							do
 #								for Seed in "${Seeds[@]}"
 #								do
-#									sbatch scripts/marlgrid/OOD_tests/OOD_size_env_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $grid_size		
+#									sbatch scripts/OOD_tests/OOD_size_env_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $grid_size		
 #								done
 #							done
 #						done
@@ -132,7 +132,7 @@ Seeds=(1)
 #							do
 #								for Seed in "${Seeds[@]}"
 #								do
-#									sbatch scripts/marlgrid/OOD_tests/OOD_size_env_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $grid_size
+#									sbatch scripts/OOD_tests/OOD_size_env_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $grid_size
 #								done
 #							done
 #						done
@@ -176,7 +176,7 @@ Seeds=(1)
 #						do					
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/OOD_tests/OOD_num_agents_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName
+#								sbatch scripts/OOD_tests/OOD_num_agents_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName
 #							done
 #						done
 #					done
@@ -223,7 +223,7 @@ Seeds=(1)
 #						do					
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/OOD_tests/OOD_coordination_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName
+#								sbatch scripts/OOD_tests/OOD_coordination_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName
 #
 #							done
 #						done
@@ -254,7 +254,7 @@ Seeds=(1)
 #						do					
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/OOD_tests/OOD_coordination_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName
+#								sbatch scripts/OOD_tests/OOD_coordination_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName
 #
 #							done
 #						done
@@ -298,7 +298,7 @@ declare -a All_heterogeneity=(1)
 #						do					
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/OOD_tests/OOD_heco_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+#								sbatch scripts/OOD_tests/OOD_heco_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 #							done
 #						done
 #					done
@@ -329,7 +329,7 @@ declare -a All_heterogeneity=(1)
 #						do					
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/OOD_tests/OOD_heco_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+#								sbatch scripts/OOD_tests/OOD_heco_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 #							done
 #						done
 #					done
@@ -368,7 +368,7 @@ declare -a All_heterogeneity=(1)
 #						do					
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/OOD_tests/OOD_heco_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+#								sbatch scripts/OOD_tests/OOD_heco_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 #							done
 #						done
 #					done
@@ -399,7 +399,7 @@ declare -a All_heterogeneity=(1)
 #						do					
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/OOD_tests/OOD_heco_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+#								sbatch scripts/OOD_tests/OOD_heco_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 #							done
 #						done
 #					done
@@ -438,7 +438,7 @@ declare -a All_heterogeneity=(1)
 #						do					
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/OOD_tests/OOD_heco_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+#								sbatch scripts/OOD_tests/OOD_heco_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 #							done
 #						done
 #					done
@@ -469,7 +469,7 @@ declare -a All_heterogeneity=(1)
 #						do					
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/OOD_tests/OOD_heco_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+#								sbatch scripts/OOD_tests/OOD_heco_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 #							done
 #						done
 #					done
@@ -509,7 +509,7 @@ do
 						do					
 							for Seed in "${Seeds[@]}"
 							do
-								sbatch scripts/marlgrid/OOD_tests/OOD_heterogeneity_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+								sbatch scripts/OOD_tests/OOD_heterogeneity_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 							done
 						done
 					done
@@ -540,7 +540,7 @@ do
 						do					
 							for Seed in "${Seeds[@]}"
 							do
-								sbatch scripts/marlgrid/OOD_tests/OOD_heterogeneity_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+								sbatch scripts/OOD_tests/OOD_heterogeneity_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 							done
 						done
 					done
@@ -581,7 +581,7 @@ done
 #						do					
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/OOD_tests/OOD_heterogeneity_test_compoundenv.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+#								sbatch scripts/OOD_tests/OOD_heterogeneity_test_compoundenv.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 #							done
 #						done
 #					done
@@ -612,7 +612,7 @@ done
 #						do					
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/OOD_tests/OOD_heterogeneity_test_compoundenv.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+#								sbatch scripts/OOD_tests/OOD_heterogeneity_test_compoundenv.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 #							done
 #						done
 #					done
@@ -654,7 +654,7 @@ do
 						do					
 							for Seed in "${Seeds[@]}"
 							do
-								sbatch scripts/marlgrid/OOD_tests/OOD_coordination_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+								sbatch scripts/OOD_tests/OOD_coordination_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 							done
 						done
 					done
@@ -685,7 +685,7 @@ do
 						do					
 							for Seed in "${Seeds[@]}"
 							do
-								sbatch scripts/marlgrid/OOD_tests/OOD_coordination_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+								sbatch scripts/OOD_tests/OOD_coordination_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 							done
 						done
 					done
@@ -727,7 +727,7 @@ done
 #						do					
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/OOD_tests/OOD_coordination_test_compoundenv.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+#								sbatch scripts/OOD_tests/OOD_coordination_test_compoundenv.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 #							done
 #						done
 #					done
@@ -758,7 +758,7 @@ done
 #						do					
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/OOD_tests/OOD_coordination_test_compoundenv.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+#								sbatch scripts/OOD_tests/OOD_coordination_test_compoundenv.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 #							done
 #						done
 #					done
@@ -803,7 +803,7 @@ done
 #						do					
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/OOD_tests/OOD_num_agents_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
+#								sbatch scripts/OOD_tests/OOD_num_agents_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName 
 #							done
 #						done
 #					done
@@ -853,7 +853,7 @@ done
 #							do
 #								for Seed in "${Seeds[@]}"
 #								do
-#									sbatch scripts/marlgrid/OOD_tests/OOD_num_treasures_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $num_treasures
+#									sbatch scripts/OOD_tests/OOD_num_treasures_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $num_treasures
 #
 #								done
 #							done
@@ -888,7 +888,7 @@ done
 #							do
 #								for Seed in "${Seeds[@]}"
 #								do
-#									sbatch scripts/marlgrid/OOD_tests/OOD_num_treasures_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $num_treasures
+#									sbatch scripts/OOD_tests/OOD_num_treasures_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $num_treasures
 #
 #								done
 #							done
@@ -939,7 +939,7 @@ done
 #							do
 #								for Seed in "${Seeds[@]}"
 #								do
-#									sbatch scripts/marlgrid/OOD_tests/OOD_size_env_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $grid_size
+#									sbatch scripts/OOD_tests/OOD_size_env_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $grid_size
 #
 #								done
 #							done
@@ -975,7 +975,7 @@ done
 #							do
 #								for Seed in "${Seeds[@]}"
 #								do
-#									sbatch scripts/marlgrid/OOD_tests/OOD_size_env_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $grid_size
+#									sbatch scripts/OOD_tests/OOD_size_env_test.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $grid_size
 #
 #								done
 #							done
@@ -1036,7 +1036,7 @@ done
 #							do
 #
 #
-#								sbatch scripts/marlgrid/saf.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $conda_env
+#								sbatch scripts/saf.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $conda_env
 #
 #							done
 #						done
@@ -1072,7 +1072,7 @@ done
 #
 #							for Seed in "${Seeds[@]}"
 #							do
-#								sbatch scripts/marlgrid/saf.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $conda_env
+#								sbatch scripts/saf.sh $Env $N_agents $Method $coordination $heterogeneity $use_policy_pool $latent_kl $Seed $ProjectName $conda_env
 #
 #							done
 #						done
@@ -1121,7 +1121,7 @@ done
 #					do
 #
 #
-#						./scripts/marlgrid/baselines.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
+#						./scripts/baselines.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
 #
 #					done
 #				done			
@@ -1174,7 +1174,7 @@ done
 #					do
 #
 #
-#						sbatch scripts/marlgrid/baselines.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
+#						sbatch scripts/baselines.sh $Env $N_agents $Method $coordination $heterogeneity $Seed $ProjectName $conda_env
 #
 #					done
 #				done			

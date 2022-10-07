@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:rtx8000:1
 #SBATCH --mem=65G                                     
-#SBATCH --time=23:50:00
+#SBATCH --time=24:00:00
 
 env=$1
 N_agents=$2
