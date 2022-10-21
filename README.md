@@ -18,6 +18,10 @@ Next, install the marlgrid environment by executing the following lines:
 cd src/envs/marlgrid_env/
 pip install -e .
 ```
+
+# HECOGrid Environment
+Coming soon...
+
 # Experiments
 You can find scripts to run experiments in the folder ``scripts``. It is structured as follows:
 ```
