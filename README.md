@@ -87,3 +87,16 @@ experiment = Experiment(project_name="pytorch") # No need to explicitly provide 
 
 For more information, you can check the [documentation](https://www.comet.com/docs/python-sdk/pytorch/).
 
+# Citation
+
+To cite this project, please use:
+
+```
+@article{Liu2022StatefulAF,
+  title={Stateful active facilitator: Coordination and Environmental Heterogeneity in Cooperative Multi-Agent Reinforcement Learning},
+  author={Dianbo Liu and Vedant Shah and Oussama Boussif and Cristian Meo and Anirudh Goyal and Tianmin Shu and Michael Curtis Mozer and Nicolas Manfred Otto Heess and Yoshua Bengio},
+  journal={ArXiv},
+  year={2022},
+  volume={abs/2210.03022}
+}
+```
