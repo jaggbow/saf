@@ -42,6 +42,7 @@ class CooperativeRewardsWrapper(gym.core.Wrapper):
 
         return obs, reward, done, info
 
+
 class AddStateSpaceActMaskWrapper(gym.core.Wrapper):
     def __init__(self, env):
         super().__init__(env)

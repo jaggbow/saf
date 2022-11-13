@@ -47,6 +47,7 @@ class PGRunner:
             self.action_space = train_env.action_space
 
         test_mode = params.test_mode
+
         self.train_env = train_env
         self.eval_env = eval_env
         self.buffer = buffer
@@ -223,7 +224,9 @@ class PGRunner:
                 if self.policy.use_policy_pool:
                     for j in range(self.policy.n_policy):
                         for i in range(self.n_agents):
-                            hidden_state[j][i] = hidden_state[j][i].repeat(obs.shape[0], 1)
+                            hidden_state[j][i] = hidden_state[j][i].repeat(
+                                obs.shape[0], 1
+                            )
                 else:
                     for i in range(self.n_agents):
                         hidden_state[i] = hidden_state[i].repeat(obs.shape[0], 1)
@@ -248,7 +251,7 @@ class PGRunner:
                             logprob,
                             _,
                             value,
-                            _
+                            _,
                         ) = self.policy.get_action_and_value(
                             obs, state, act_masks, None, obs_old
                         )
@@ -396,7 +399,9 @@ class PGRunner:
                 if self.policy.use_policy_pool:
                     for j in range(self.policy.n_policy):
                         for i in range(self.n_agents):
-                            hidden_state[j][i] = hidden_state[j][i].repeat(obs.shape[0], 1)
+                            hidden_state[j][i] = hidden_state[j][i].repeat(
+                                obs.shape[0], 1
+                            )
                 else:
                     for i in range(self.n_agents):
                         hidden_state[i] = hidden_state[i].repeat(obs.shape[0], 1)
@@ -420,7 +425,7 @@ class PGRunner:
                             logprob,
                             _,
                             value,
-                            _
+                            _,
                         ) = self.policy.get_action_and_value(
                             obs, state, act_masks, None, obs_old
                         )
