@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from tqdm import tqdm
 
 import torch
 from torch import nn, optim
@@ -21,7 +22,7 @@ class MAPPO(nn.Module):
     def __init__(self, observation_space, action_space, state_space, params):
         super(MAPPO, self).__init__()
         # https://ppo-details.cleanrl.dev//2021/11/05/ppo-implementation-details/
-        
+
         self.type = params.type
         self.obs_shape = get_obs_shape(observation_space)
         self.state_shape = get_state_shape(state_space)
@@ -34,6 +35,7 @@ class MAPPO(nn.Module):
         self.gae_lambda = params.gae_lambda
         self.gae = params.gae
         self.n_agents = params.n_agents
+        self.use_rnn = params.use_rnn
 
         self.batch_size = params.rollout_threads * params.env_steps
         self.minibatch_size = self.batch_size // params.num_minibatches
@@ -49,65 +51,94 @@ class MAPPO(nn.Module):
         self.shared_actor = params.shared_actor
         self.continuous_action = params.continuous_action
 
-        if self.type == 'conv':
-            assert len(self.obs_shape) == 3, 'Convolutional policy cannot be used for non-image observations!'
+        if self.type == "conv":
+            assert (
+                len(self.obs_shape) == 3
+            ), "Convolutional policy cannot be used for non-image observations!"
             self.conv = CNN(out_size=params.conv_out_size)
             self.input_shape = params.conv_out_size
         else:
             self.input_shape = self.obs_shape
-        
+
         if self.shared_critic:
             self.critic = MLP(
-                np.array(self.state_shape).prod(), 
-                [self.hidden_dim]*self.n_layers, 
-                1, 
+                np.array(self.state_shape).prod(),
+                [self.hidden_dim] * self.n_layers,
+                1,
                 std=1.0,
-                activation=self.activation)
+                activation=self.activation,
+            )
         else:
-            self.critic = nn.ModuleList([MLP(
-                np.array(self.state_shape).prod(), 
-                [self.hidden_dim]*self.n_layers, 
-                1, 
-                std=1.0,
-                activation=self.activation) for _ in range(self.n_agents)])
+            self.critic = nn.ModuleList(
+                [
+                    MLP(
+                        np.array(self.state_shape).prod(),
+                        [self.hidden_dim] * self.n_layers,
+                        1,
+                        std=1.0,
+                        activation=self.activation,
+                    )
+                    for _ in range(self.n_agents)
+                ]
+            )
 
         if self.shared_actor:
             if self.continuous_action:
                 self.actor_mean = MLP(
-                np.array(self.input_shape).prod(), 
-                [self.hidden_dim]*self.n_layers, 
-                np.array(self.action_shape).prod(), 
-                std=0.01,
-                activation=self.activation)
-                
-                self.actor_logstd = nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod()))
+                    np.array(self.input_shape).prod(),
+                    [self.hidden_dim] * self.n_layers,
+                    np.array(self.action_shape).prod(),
+                    std=0.01,
+                    activation=self.activation,
+                )
+
+                self.actor_logstd = nn.Parameter(
+                    torch.zeros(1, np.array(self.action_shape).prod())
+                )
             else:
                 self.actor = MLP(
-                    np.array(self.input_shape).prod(), 
-                    [self.hidden_dim]*self.n_layers, 
-                    np.array(self.action_shape).prod(), 
+                    np.array(self.input_shape).prod(),
+                    [self.hidden_dim] * self.n_layers,
+                    np.array(self.action_shape).prod(),
                     std=0.01,
-                    activation=self.activation)
+                    activation=self.activation,
+                )
         else:
             if self.continuous_action:
-                
-                self.actor_mean = nn.ModuleList([MLP(
-                np.array(self.input_shape).prod(), 
-                [self.hidden_dim]*self.n_layers, 
-                np.array(self.action_shape).prod(), 
-                std=0.01,
-                activation=self.activation) for _ in range(self.n_agents)])
-                
-                self.actor_logstd = nn.ParameterList([
-                    nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod())) for _ in range(self.n_agents)])
+
+                self.actor_mean = nn.ModuleList(
+                    [
+                        MLP(
+                            np.array(self.input_shape).prod(),
+                            [self.hidden_dim] * self.n_layers,
+                            np.array(self.action_shape).prod(),
+                            std=0.01,
+                            activation=self.activation,
+                        )
+                        for _ in range(self.n_agents)
+                    ]
+                )
+
+                self.actor_logstd = nn.ParameterList(
+                    [
+                        nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod()))
+                        for _ in range(self.n_agents)
+                    ]
+                )
             else:
-                self.actor = nn.ModuleList([MLP(
-                    np.array(self.input_shape).prod(), 
-                    [self.hidden_dim]*self.n_layers, 
-                    np.array(self.action_shape).prod(), 
-                    std=0.01,
-                    activation=self.activation) for _ in range(self.n_agents)])
-        
+                self.actor = nn.ModuleList(
+                    [
+                        MLP(
+                            np.array(self.input_shape).prod(),
+                            [self.hidden_dim] * self.n_layers,
+                            np.array(self.action_shape).prod(),
+                            std=0.01,
+                            activation=self.activation,
+                        )
+                        for _ in range(self.n_agents)
+                    ]
+                )
+
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5)
 
     def get_value(self, x, state, z=None):
@@ -118,20 +149,22 @@ class MAPPO(nn.Module):
         Returns:
             value: [batch_size, n_agents]
         """
-        
+
         # print(f'Shape of x is: {x.shape}')
         # print(f'Shape of state is: {state.shape}')
         values = []
-        for i in range(self.n_agents): 
+        for i in range(self.n_agents):
             if self.shared_critic:
-                values.append(self.critic(state[:,0]))
+                values.append(self.critic(state[:, 0]))
             else:
                 # print(f'Shape of state: {state.shape}')
-                values.append(self.critic[i](state[:,0]))
+                values.append(self.critic[i](state[:, 0]))
         values = torch.stack(values, dim=1).squeeze(-1)
         return values
 
-    def get_action_and_value(self, x, state, action_mask=None, actions=None, obs_old=None):
+    def get_action_and_value(
+        self, x, state, action_mask=None, actions=None, obs_old=None
+    ):
         """
         Args:
             x: [batch_size, n_agents, obs_shape]
@@ -143,14 +176,13 @@ class MAPPO(nn.Module):
             entropy: [batch_size, n_agents]
             value: [batch_size, n_agents]
         """
-        
+
         # print(f'self.type is: {self.type}')
 
-
-        if self.type == 'conv':
+        if self.type == "conv":
             bs = x.shape[0]
             n_ags = x.shape[1]
-            x = x.reshape((-1,)+self.obs_shape)
+            x = x.reshape((-1,) + self.obs_shape)
             x = self.conv(x)
             x = x.reshape(bs, n_ags, self.input_shape)
             state = x.reshape(bs, n_ags * self.input_shape)
@@ -159,38 +191,37 @@ class MAPPO(nn.Module):
         out_actions = []
         logprobs = []
         entropies = []
- 
-        
+
         for i in range(self.n_agents):
             if self.shared_actor:
                 if self.continuous_action:
-                    action_mean = self.actor_mean(x[:,i])
+                    action_mean = self.actor_mean(x[:, i])
                     action_logstd = self.actor_logstd.expand_as(action_mean)
                     action_std = torch.exp(action_logstd)
                 else:
-                    logits = self.actor(x[:,i])
+                    logits = self.actor(x[:, i])
                     if type(action_mask) == torch.Tensor:
-                        logits[action_mask[:,i]==0] = -1e18
+                        logits[action_mask[:, i] == 0] = -1e18
             else:
                 if self.continuous_action:
-                    action_mean = self.actor_mean[i](x[:,i])
+                    action_mean = self.actor_mean[i](x[:, i])
                     action_logstd = self.actor_logstd[i].expand_as(action_mean)
                     action_std = torch.exp(action_logstd)
                 else:
-                    logits = self.actor[i](x[:,i])
+                    logits = self.actor[i](x[:, i])
                     if type(action_mask) == torch.Tensor:
-                        logits[action_mask[:,i]==0] = -1e18
-            
+                        logits[action_mask[:, i] == 0] = -1e18
+
             if self.continuous_action:
                 probs = Normal(action_mean, action_std)
             else:
                 probs = Categorical(logits=logits)
-            
+
             if actions is None:
                 action = probs.sample()
             else:
-                action = actions[:,i]
-            
+                action = actions[:, i]
+
             if self.continuous_action:
                 logprob = probs.log_prob(action).sum(1)
                 entropy = probs.entropy().sum(1)
@@ -201,14 +232,14 @@ class MAPPO(nn.Module):
             out_actions.append(action)
             logprobs.append(logprob)
             entropies.append(entropy)
-        
+
         out_actions = torch.stack(out_actions, dim=1)
         logprobs = torch.stack(logprobs, dim=1)
         entropies = torch.stack(entropies, dim=1)
         value = self.get_value(x, state)
-        
+
         return out_actions, logprobs, entropies, value, None
-    
+
     def update_lr(self, step, total_steps):
         frac = 1.0 - (step - 1.0) / total_steps
         lr = frac * self.learning_rate
@@ -225,7 +256,7 @@ class MAPPO(nn.Module):
             advantages: [bach_size, n_agents]
             returns: [bach_size, n_agents]
         """
-            
+
         if self.gae:
             advantages = []
             lastgaelam = 0
@@ -236,10 +267,16 @@ class MAPPO(nn.Module):
                 else:
                     nextnonterminal = 1.0 - buffer.dones[t + 1]
                     nextvalues = buffer.values[t + 1]
-                delta = buffer.rewards[t] + self.gamma * nextvalues * nextnonterminal - buffer.values[t]
-                adv = lastgaelam = delta + self.gamma * self.gae_lambda * nextnonterminal * lastgaelam
+                delta = (
+                    buffer.rewards[t]
+                    + self.gamma * nextvalues * nextnonterminal
+                    - buffer.values[t]
+                )
+                adv = lastgaelam = (
+                    delta + self.gamma * self.gae_lambda * nextnonterminal * lastgaelam
+                )
                 advantages.insert(0, adv)
-            
+
             advantages = torch.stack(advantages, dim=0)
             returns = advantages + buffer.values
         else:
@@ -252,59 +289,78 @@ class MAPPO(nn.Module):
                     nextnonterminal = 1.0 - buffer.dones[t + 1]
                     next_return = returns[0]
 
-                returns.insert(0, buffer.rewards[t] + self.gamma * nextnonterminal * next_return)
-            
+                returns.insert(
+                    0, buffer.rewards[t] + self.gamma * nextnonterminal * next_return
+                )
+
             returns = torch.stack(returns, dim=0)
             advantages = returns - buffer.values
-        
+
         advantages = advantages.squeeze(-1)
         returns = returns.squeeze(-1)
         return advantages, returns
-    
+
     def train_step(self, buffer, advantages, returns):
         self.train()
         # flatten the batch
         b_obs = buffer.obs.reshape((-1, self.n_agents) + self.obs_shape)
-        
-        if hasattr(buffer, 'state'):
+
+        if hasattr(buffer, "state"):
             b_state = buffer.state.reshape((-1, self.n_agents) + self.state_shape)
-            #print(f'Hi')
+            # print(f'Hi')
         else:
-            #print(f'Hi2')
+            # print(f'Hi2')
             b_state = None
 
         b_logprobs = buffer.logprobs.reshape(-1, self.n_agents)
         if self.continuous_action:
-            b_actions = buffer.actions.reshape((-1, self.n_agents)+self.action_shape)
+            b_actions = buffer.actions.reshape((-1, self.n_agents) + self.action_shape)
         else:
             b_actions = buffer.actions.reshape((-1, self.n_agents))
 
-        b_action_masks = buffer.action_masks.reshape((-1, self.n_agents)+self.action_shape)
+        b_action_masks = buffer.action_masks.reshape(
+            (-1, self.n_agents) + self.action_shape
+        )
         b_advantages = advantages.reshape(-1, self.n_agents)
         b_returns = returns.reshape(-1, self.n_agents)
         b_values = buffer.values.reshape(-1, self.n_agents)
-
 
         # Optimizing the policy and value network
         b_inds = np.arange(self.batch_size)
         clipfracs = []
         for epoch in range(self.update_epochs):
             np.random.shuffle(b_inds)
-            for start in range(0, self.batch_size, self.minibatch_size):
+            for start in tqdm(
+                range(0, self.batch_size, self.minibatch_size), leave=False
+            ):
                 end = start + self.minibatch_size
                 mb_inds = b_inds[start:end]
 
                 if b_state is not None:
                     if self.continuous_action:
-                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], None, b_actions[mb_inds])
+                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(
+                            b_obs[mb_inds], b_state[mb_inds], None, b_actions[mb_inds]
+                        )
                     else:
-                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], b_action_masks[mb_inds], b_actions.long()[mb_inds])
+                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(
+                            b_obs[mb_inds],
+                            b_state[mb_inds],
+                            b_action_masks[mb_inds],
+                            b_actions.long()[mb_inds],
+                        )
                 else:
                     if self.continuous_action:
-                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], None, None, b_actions[mb_inds])
+                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(
+                            b_obs[mb_inds], None, None, b_actions[mb_inds]
+                        )
                     else:
-                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(b_obs[mb_inds], None, b_action_masks[mb_inds], b_actions.long()[mb_inds])
-                
+                        _, newlogprob, entropy, newvalue, _ = self.get_action_and_value(
+                            b_obs[mb_inds],
+                            None,
+                            b_action_masks[mb_inds],
+                            b_actions.long()[mb_inds],
+                        )
+
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 
@@ -312,15 +368,21 @@ class MAPPO(nn.Module):
                     # calculate approx_kl http://joschu.net/blog/kl-approx.html
                     old_approx_kl = (-logratio).mean()
                     approx_kl = ((ratio - 1) - logratio).mean()
-                    clipfracs += [((ratio - 1.0).abs() > self.clip_coef).float().mean().item()]
+                    clipfracs += [
+                        ((ratio - 1.0).abs() > self.clip_coef).float().mean().item()
+                    ]
 
                 mb_advantages = b_advantages[mb_inds]
                 if self.norm_adv:
-                    mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
+                    mb_advantages = (mb_advantages - mb_advantages.mean()) / (
+                        mb_advantages.std() + 1e-8
+                    )
 
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio
-                pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - self.clip_coef, 1 + self.clip_coef)
+                pg_loss2 = -mb_advantages * torch.clamp(
+                    ratio, 1 - self.clip_coef, 1 + self.clip_coef
+                )
                 pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
                 # Value loss
@@ -355,41 +417,85 @@ class MAPPO(nn.Module):
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
         metrics = {
-            'pg_loss': pg_loss.item(),
-            'v_loss': v_loss.item(),
-            'entropy_loss': entropy_loss.item(), 
-            'old_approx_kl': old_approx_kl.item(), 
-            'approx_kl': approx_kl.item(), 
-            'clipfracs': np.mean(clipfracs), 
-            'explained_var': explained_var
+            "pg_loss": pg_loss.item(),
+            "v_loss": v_loss.item(),
+            "entropy_loss": entropy_loss.item(),
+            "old_approx_kl": old_approx_kl.item(),
+            "approx_kl": approx_kl.item(),
+            "clipfracs": np.mean(clipfracs),
+            "explained_var": explained_var,
         }
         return metrics
-    
+
     def save_checkpoints(self, checkpoint_dir):
         if self.type == "conv":
-            torch.save(self.conv.state_dict(), os.path.join(checkpoint_dir, 'conv.pth'))
-        if self.continuous_action: 
-            torch.save(self.actor_mean.state_dict(), os.path.join(checkpoint_dir, 'actor_mean.pth'))
-            torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
+            torch.save(self.conv.state_dict(), os.path.join(checkpoint_dir, "conv.pth"))
+        if self.continuous_action:
+            torch.save(
+                self.actor_mean.state_dict(),
+                os.path.join(checkpoint_dir, "actor_mean.pth"),
+            )
+            torch.save(
+                self.critic.state_dict(), os.path.join(checkpoint_dir, "critic.pth")
+            )
             if self.shared_actor:
                 state = dict(actor_logstd=self.actor_logstd)
-                torch.save(state, os.path.join(checkpoint_dir, 'actor_logstd.pth'))
+                torch.save(state, os.path.join(checkpoint_dir, "actor_logstd.pth"))
             else:
-                torch.save(self.actor_logstd.state_dict(), os.path.join(checkpoint_dir, 'actor_logstd.pth'))
+                torch.save(
+                    self.actor_logstd.state_dict(),
+                    os.path.join(checkpoint_dir, "actor_logstd.pth"),
+                )
         else:
-            torch.save(self.actor.state_dict(), os.path.join(checkpoint_dir, 'actor.pth'))
-            torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
-    
+            torch.save(
+                self.actor.state_dict(), os.path.join(checkpoint_dir, "actor.pth")
+            )
+            torch.save(
+                self.critic.state_dict(), os.path.join(checkpoint_dir, "critic.pth")
+            )
+
     def load_checkpoints(self, checkpoint_dir):
         if self.type == "conv":
-            self.conv.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'conv.pth'), map_location=lambda storage, loc: storage))
-        if self.continuous_action: 
-            self.actor_mean.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor_mean.pth'), map_location=lambda storage, loc: storage))
-            self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))
+            self.conv.load_state_dict(
+                torch.load(
+                    os.path.join(checkpoint_dir, "conv.pth"),
+                    map_location=lambda storage, loc: storage,
+                )
+            )
+        if self.continuous_action:
+            self.actor_mean.load_state_dict(
+                torch.load(
+                    os.path.join(checkpoint_dir, "actor_mean.pth"),
+                    map_location=lambda storage, loc: storage,
+                )
+            )
+            self.critic.load_state_dict(
+                torch.load(
+                    os.path.join(checkpoint_dir, "critic.pth"),
+                    map_location=lambda storage, loc: storage,
+                )
+            )
             if self.shared_actor:
-                self.actor_logstd = torch.load(os.path.join(checkpoint_dir, 'actor_logstd.pth'))['actor_logstd']
+                self.actor_logstd = torch.load(
+                    os.path.join(checkpoint_dir, "actor_logstd.pth")
+                )["actor_logstd"]
             else:
-                self.actor_logstd.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor_logstd.pth'), map_location=lambda storage, loc: storage))
+                self.actor_logstd.load_state_dict(
+                    torch.load(
+                        os.path.join(checkpoint_dir, "actor_logstd.pth"),
+                        map_location=lambda storage, loc: storage,
+                    )
+                )
         else:
-            self.actor.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor.pth'), map_location=lambda storage, loc: storage))
-            self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))
+            self.actor.load_state_dict(
+                torch.load(
+                    os.path.join(checkpoint_dir, "actor.pth"),
+                    map_location=lambda storage, loc: storage,
+                )
+            )
+            self.critic.load_state_dict(
+                torch.load(
+                    os.path.join(checkpoint_dir, "critic.pth"),
+                    map_location=lambda storage, loc: storage,
+                )
+            )

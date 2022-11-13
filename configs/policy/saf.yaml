@@ -21,16 +21,15 @@ params:
   env_steps: ${env_steps}
   activation: tanh
   shared_critic: False
-  shared_actor: False
   use_policy_pool: ${use_policy_pool}
   use_SK: True 
   use_indepedance_reward: False
   N_SK_slots: 4
   n_policy: 4
   indepedence_coef: 0.01
-  continuous_action: ${continuous_action}
   action_std_init: 0.005
   latent_kl: ${latent_kl}
   latent_dim: 8
   type: mlp
+  use_rnn: True
   conv_out_size: 64

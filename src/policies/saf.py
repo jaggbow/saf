@@ -2,17 +2,15 @@ from einops import rearrange
 import math
 from perceiver.model.core import InputAdapter
 import numpy as np
-import sys
 import os
 import torch
 from torch import nn, optim
 from torch.distributions.categorical import Categorical
-from torch.distributions import MultivariateNormal
-from torch.distributions.normal import Normal
 from src.architectures.mlp import MLP
 from src.utils import *
 from src.architectures.mlp import MLP
 from src.architectures.cnn import CNN
+from src.architectures.rnn import GRURNN
 from perceiver.model.core import PerceiverEncoder, CrossAttention
 
 
@@ -40,7 +38,7 @@ class SAF(nn.Module):
         self.n_agents = params.n_agents
 
         self.batch_size = params.rollout_threads * params.env_steps
-        self.minibatch_size = self.batch_size // params.num_minibatches
+        self.rollout_threads = params.rollout_threads
         self.ent_coef = params.ent_coef
         self.vf_coef = params.vf_coef
         self.norm_adv = params.norm_adv
@@ -50,24 +48,20 @@ class SAF(nn.Module):
         self.target_kl = params.target_kl
         self.update_epochs = params.update_epochs
         self.shared_critic = params.shared_critic
-        self.shared_actor = params.shared_actor
+        self.use_rnn = params.use_rnn
 
-        if self.type == 'conv':
-            assert len(self.obs_shape) == 3, 'Convolutional policy cannot be used for non-image observations!'
+        if self.type == "conv":
+            assert (
+                len(self.obs_shape) == 3
+            ), "Convolutional policy cannot be used for non-image observations!"
             self.conv = CNN(out_size=params.conv_out_size)
             self.input_shape = params.conv_out_size
         else:
             self.input_shape = self.obs_shape
 
-       
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.continuous_action = params.continuous_action
         self.action_std_init = params.action_std_init
-        if self.continuous_action:
-            self.action_var = torch.full(
-                (self.action_dim,), self.action_std_init * self.action_std_init)
 
         # SAF related setting
         self.use_policy_pool = params.use_policy_pool
@@ -80,97 +74,121 @@ class SAF(nn.Module):
         self.latent_dim = params.latent_dim
 
         if self.latent_kl:
-            input_critic = np.array(self.state_shape).prod() + self.n_agents*self.latent_dim
-        else: 
+            input_critic = (
+                np.array(self.state_shape).prod() + self.n_agents * self.latent_dim
+            )
+        else:
             input_critic = np.array(self.state_shape).prod()
-       
+
         if self.shared_critic:
             self.critic = MLP(
-                input_critic, 
-                [self.hidden_dim]*self.n_layers, 
-                1, 
+                input_critic,
+                [self.hidden_dim] * self.n_layers,
+                1,
                 std=1.0,
-                activation=self.activation)
+                activation=self.activation,
+            )
         else:
-            self.critic = nn.ModuleList([MLP(
-                input_critic, 
-                [self.hidden_dim]*self.n_layers, 
-                1, 
-                std=1.0,
-                activation=self.activation) for _ in range(self.n_agents)])
+            self.critic = nn.ModuleList(
+                [
+                    MLP(
+                        input_critic,
+                        [self.hidden_dim] * self.n_layers,
+                        1,
+                        std=1.0,
+                        activation=self.activation,
+                    )
+                    for _ in range(self.n_agents)
+                ]
+            )
 
-        if self.shared_actor:
-            if self.continuous_action:
-                self.actor_mean = MLP(
-                np.array(self.input_shape).prod(), 
-                [self.hidden_dim]*self.n_layers, 
-                np.array(self.action_shape).prod(), 
-                std=0.01,
-                activation=self.activation)
-                
-                self.actor_logstd = nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod()))
+        if self.use_policy_pool:
+            if self.use_rnn:
+                self.actor = nn.ModuleList(
+                    [
+                        GRURNN(
+                            np.array(self.input_shape).prod(),
+                            self.hidden_dim,
+                            np.array(self.action_shape).prod(),
+                            std=0.01,
+                            activation=self.activation,
+                        )
+                        for _ in range(self.n_policy)
+                    ]
+                )
             else:
-                self.actor = MLP(
-                    np.array(self.input_shape).prod(), 
-                    [self.hidden_dim]*self.n_layers, 
-                    np.array(self.action_shape).prod(), 
-                    std=0.01,
-                    activation=self.activation)
-        elif self.use_policy_pool:
-            if self.continuous_action:
-                
-                self.actor_mean = nn.ModuleList([MLP(
-                np.array(self.input_shape).prod(), 
-                [self.hidden_dim]*self.n_layers, 
-                np.array(self.action_shape).prod(), 
-                std=0.01,
-                activation=self.activation) for _ in range(self.n_policy)])
-                
-                self.actor_logstd = nn.ParameterList([
-                    nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod())) for _ in range(self.n_policy)])
-            else:
-
-                self.actor = nn.ModuleList([MLP(
-                    np.array(self.input_shape).prod(), 
-                    [self.hidden_dim]*self.n_layers, 
-                    np.array(self.action_shape).prod(), 
-                    std=0.01,
-                    activation=self.activation) for _ in range(self.n_policy)])
+                self.actor = nn.ModuleList(
+                    [
+                        MLP(
+                            np.array(self.input_shape).prod(),
+                            [self.hidden_dim] * self.n_layers,
+                            np.array(self.action_shape).prod(),
+                            std=0.01,
+                            activation=self.activation,
+                        )
+                        for _ in range(self.n_policy)
+                    ]
+                )
 
         else:
-            if self.continuous_action:
-                
-                self.actor_mean = nn.ModuleList([MLP(
-                np.array(self.input_shape).prod(), 
-                [self.hidden_dim]*self.n_layers, 
-                np.array(self.action_shape).prod(), 
-                std=0.01,
-                activation=self.activation) for _ in range(self.n_agents)])
-                
-                self.actor_logstd = nn.ParameterList([
-                    nn.Parameter(torch.zeros(1, np.array(self.action_shape).prod())) for _ in range(self.n_agents)])
+            if self.use_rnn:
+                self.actor = nn.ModuleList(
+                    [
+                        GRURNN(
+                            np.array(self.input_shape).prod(),
+                            self.hidden_dim,
+                            np.array(self.action_shape).prod(),
+                            std=0.01,
+                            activation=self.activation,
+                        )
+                        for _ in range(self.n_agents)
+                    ]
+                )
             else:
+                self.actor = nn.ModuleList(
+                    [
+                        MLP(
+                            np.array(self.input_shape).prod(),
+                            [self.hidden_dim] * self.n_layers,
+                            np.array(self.action_shape).prod(),
+                            std=0.01,
+                            activation=self.activation,
+                        )
+                        for _ in range(self.n_agents)
+                    ]
+                )
 
-                self.actor = nn.ModuleList([MLP(
-                    np.array(self.input_shape).prod(), 
-                    [self.hidden_dim]*self.n_layers, 
-                    np.array(self.action_shape).prod(), 
-                    std=0.01,
-                    activation=self.activation) for _ in range(self.n_agents)])
-        
-        
-        
-            
         # SAF module
-        self.SAF = Communication_and_policy(input_dim=np.array(self.input_shape).prod(),
-                                            key_dim=np.array(self.input_shape).prod(),
-                                            N_SK_slots=self.N_SK_slots,
-                                            n_agents=self.n_agents, n_policy=self.n_policy,
-                                            hidden_dim=self.hidden_dim, n_layers=self.n_layers,
-                                            activation=self.activation, latent_kl=self.latent_kl,
-                                            latent_dim=self.latent_dim)
+        self.SAF = Communication_and_policy(
+            input_dim=np.array(self.input_shape).prod(),
+            key_dim=np.array(self.input_shape).prod(),
+            N_SK_slots=self.N_SK_slots,
+            n_agents=self.n_agents,
+            n_policy=self.n_policy,
+            hidden_dim=self.hidden_dim,
+            n_layers=self.n_layers,
+            activation=self.activation,
+            latent_kl=self.latent_kl,
+            latent_dim=self.latent_dim,
+        )
 
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5)
+        self.init_hidden()
+
+    def init_hidden(self):
+        if self.use_policy_pool:
+            self.hidden_state = [
+                [
+                    torch.zeros(1, self.hidden_dim).to(self.device)
+                    for _ in range(self.n_agents)
+                ]
+                for _ in range(self.n_policy)
+            ]
+        else:
+            self.hidden_state = [
+                torch.zeros(1, self.hidden_dim).to(self.device)
+                for _ in range(self.n_agents)
+            ]
 
     def get_value(self, x, state, z=None):
         """
@@ -194,10 +212,12 @@ class SAF(nn.Module):
                 else:
                     values.append(self.critic[i](state[:, 0]))
         values = torch.stack(values, dim=1).squeeze(-1)
-       
-        return values  
 
-    def get_action_and_value(self, x, state, action_mask=None, actions=None, x_old=None):
+        return values
+
+    def get_action_and_value(
+        self, x, state, action_mask=None, actions=None, x_old=None, hidden_state=None
+    ):
         """
         Args:
             x: [batch_size, n_agents, obs_shape]
@@ -214,26 +234,25 @@ class SAF(nn.Module):
         bs = x.shape[0]
         n_ags = x.shape[1]
 
-
-        if self.type == 'conv':
-            x = x.reshape((-1,)+self.obs_shape)
+        if self.type == "conv":
+            x = x.reshape((-1,) + self.obs_shape)
             x = self.conv(x)
             x = x.reshape(bs, n_ags, self.input_shape)
             state = x.reshape(bs, n_ags * self.input_shape)
             state = state.unsqueeze(1).repeat(1, n_ags, 1)
-            if x_old is not None and len(x_old.shape)==5:#use CNN if the x_old is not already processed
-      
-                bs_, n_ags_=x_old.shape[0],x_old.shape[1]
-                x_old = x_old.reshape((-1,)+self.obs_shape)
+            if (
+                x_old is not None and len(x_old.shape) == 5
+            ):  # use CNN if the x_old is not already processed
+
+                bs_, n_ags_ = x_old.shape[0], x_old.shape[1]
+                x_old = x_old.reshape((-1,) + self.obs_shape)
                 x_old = self.conv(x_old)
                 x_old = x_old.reshape(bs_, n_ags_, self.input_shape)
-
-
 
         if self.use_SK:
             # communicate among different agents using SK
             x_saf = self.SAF(x)
-            if self.type == 'conv':
+            if self.type == "conv":
                 state = x_saf.reshape(bs, n_ags * self.input_shape)
             else:
                 state = x_saf.reshape(bs, n_ags * self.input_shape[0])
@@ -242,58 +261,41 @@ class SAF(nn.Module):
         out_actions = []
         logprobs = []
         entropies = []
-      
+
         if self.use_policy_pool:
             # using policy pool
-
+            hidden_state_new = []
             for j in range(self.n_policy):
                 out_actions_ = []
                 logprobs_ = []
                 entropies_ = []
+                hidden_state_a = []
                 for i in range(self.n_agents):
-                    if self.shared_actor:
-                        if self.continuous_action:
-                            action_mean = self.actor_mean[j](x[:, i])
-                            action_logstd = self.actor_logstd.expand_as(
-                                action_mean)
-                            action_std = torch.exp(action_logstd)
-                        else:
-                            logits = self.actor[j](x[:, i])
-                            if type(action_mask) == torch.Tensor:
-                                logits[action_mask[:,i]==0] = -1e18
+                    if self.use_rnn:
+                        logits, hidden_state_ = self.actor[j](
+                            x[:, i], hidden_state[j][i]
+                        )
+                        hidden_state_a.append(hidden_state_)
                     else:
-                        if self.continuous_action:
-                            action_mean = self.actor_mean[j](x[:, i])
-                            action_logstd = self.actor_logstd[i].expand_as(
-                                action_mean)
-                            action_std = torch.exp(action_logstd)
-                        else:
-                            logits = self.actor[j](x[:, i])
-                            if type(action_mask) == torch.Tensor:
-                                logits[action_mask[:,i]==0] = -1e18
-                            
+                        logits = self.actor[j](x[:, i])
+                    if type(action_mask) == torch.Tensor:
+                        logits[action_mask[:, i] == 0] = -1e18
 
-                    if self.continuous_action:
-                        probs = Normal(action_mean, action_std)
-                    else:
-                        probs = Categorical(logits=logits)
+                    probs = Categorical(logits=logits)
 
                     if actions is None:
                         action = probs.sample()
                     else:
                         action = actions[:, i]
 
-                    if self.continuous_action:
-                        logprob = probs.log_prob(action).sum(1)
-                        entropy = probs.entropy().sum(1)
-                    else:
-                        logprob = probs.log_prob(action)
-                        entropy = probs.entropy()
+                    logprob = probs.log_prob(action)
+                    entropy = probs.entropy()
 
                     out_actions_.append(action)
                     logprobs_.append(logprob)
                     entropies_.append(entropy)
 
+                hidden_state_new.append(hidden_state_a)
                 # [batch_size, n_agents]
                 out_actions_ = torch.stack(out_actions_, dim=1)
                 logprobs_ = torch.stack(logprobs_, dim=1)
@@ -309,62 +311,42 @@ class SAF(nn.Module):
             entropies = torch.cat(entropies, dim=2)
             # attention for different policy outputs
             attention_score = self.SAF.Run_policy_attention(
-                x)  # (bsz,n_agents,n_policy)
+                x
+            )  # (bsz,n_agents,n_policy)
 
-            if self.continuous_action:
-                out_actions = torch.einsum(
-                    'bijk,bij->bik', out_actions.float(), attention_score).long()  # bsz x N_agents
-                print('out_actions', out_actions)
-            else:
-                out_actions = torch.einsum(
-                    'bij,bij->bi', out_actions.float(), attention_score).long()  # bsz x N_agents
+            out_actions = torch.einsum(
+                "bij,bij->bi", out_actions.float(), attention_score
+            ).long()  # bsz x N_agents
 
             logprobs = torch.einsum(
-                'bij,bij->bi', logprobs, attention_score)  # bsz x N_agents
+                "bij,bij->bi", logprobs, attention_score
+            )  # bsz x N_agents
 
             entropies = torch.einsum(
-                'bij,bij->bi', entropies, attention_score)  # bsz x N_agents
+                "bij,bij->bi", entropies, attention_score
+            )  # bsz x N_agents
 
         else:
             # not using policy pool
+            hidden_state_new = []
             for i in range(self.n_agents):
-                if self.shared_actor:
-                    if self.continuous_action:
-                        action_mean = self.actor_mean(x[:, i])
-                        action_logstd = self.actor_logstd.expand_as(
-                            action_mean)
-                        action_std = torch.exp(action_logstd)
-                    else:
-                        logits = self.actor(x[:, i])
-                        if type(action_mask) == torch.Tensor:
-                            logits[action_mask[:,i]==0] = -1e18
+                if self.use_rnn:
+                    logits, hidden_state_ = self.actor[i](x[:, i], hidden_state[i])
+                    hidden_state_new.append(hidden_state_)
                 else:
-                    if self.continuous_action:
-                        action_mean = self.actor_mean[i](x[:, i])
-                        action_logstd = self.actor_logstd[i].expand_as(
-                            action_mean)
-                        action_std = torch.exp(action_logstd)
-                    else:
-                        logits = self.actor[i](x[:, i])
-                        if type(action_mask) == torch.Tensor:
-                            logits[action_mask[:,i]==0] = -1e18
+                    logits, hidden_state_ = self.actor[i](x[:, i])
+                if type(action_mask) == torch.Tensor:
+                    logits[action_mask[:, i] == 0] = -1e18
 
-                if self.continuous_action:
-                    probs = Normal(action_mean, action_std)
-                else:
-                    probs = Categorical(logits=logits)
+                probs = Categorical(logits=logits)
 
                 if actions is None:
                     action = probs.sample()
                 else:
                     action = actions[:, i]
 
-                if self.continuous_action:
-                    logprob = probs.log_prob(action).sum(1)
-                    entropy = probs.entropy().sum(1)
-                else:
-                    logprob = probs.log_prob(action)
-                    entropy = probs.entropy()
+                logprob = probs.log_prob(action)
+                entropy = probs.entropy()
 
                 out_actions.append(action)
                 logprobs.append(logprob)
@@ -374,15 +356,13 @@ class SAF(nn.Module):
             logprobs = torch.stack(logprobs, dim=1)
             entropies = torch.stack(entropies, dim=1)
 
- 
         if self.latent_kl:
             z, KL = self.SAF.information_bottleneck(x_saf, x, x_old)
             value = self.get_value(x, state, z)
-        else:   
+        else:
             value = self.get_value(x, state)
 
-        return out_actions, logprobs, entropies, value, KL
-
+        return out_actions, logprobs, entropies, value, KL, hidden_state_new
 
     def update_lr(self, step, total_steps):
         frac = 1.0 - (step - 1.0) / total_steps
@@ -411,10 +391,14 @@ class SAF(nn.Module):
                 else:
                     nextnonterminal = 1.0 - buffer.dones[t + 1]
                     nextvalues = buffer.values[t + 1]
-                delta = buffer.rewards[t] + self.gamma * \
-                    nextvalues * nextnonterminal - buffer.values[t]
-                adv = lastgaelam = delta + self.gamma * \
-                    self.gae_lambda * nextnonterminal * lastgaelam
+                delta = (
+                    buffer.rewards[t]
+                    + self.gamma * nextvalues * nextnonterminal
+                    - buffer.values[t]
+                )
+                adv = lastgaelam = (
+                    delta + self.gamma * self.gae_lambda * nextnonterminal * lastgaelam
+                )
                 advantages.insert(0, adv)
 
             advantages = torch.stack(advantages, dim=0)
@@ -430,7 +414,8 @@ class SAF(nn.Module):
                     next_return = returns[0]
 
                 returns.insert(
-                    0, buffer.rewards[t] + self.gamma * nextnonterminal * next_return)
+                    0, buffer.rewards[t] + self.gamma * nextnonterminal * next_return
+                )
 
             returns = torch.stack(returns, dim=0)
             advantages = returns - buffer.values
@@ -443,103 +428,159 @@ class SAF(nn.Module):
         self.train()
         # flatten the batch
         b_obs = buffer.obs.reshape((-1, self.n_agents) + self.obs_shape)
-        if hasattr(buffer, 'state'):
+        if hasattr(buffer, "state"):
             b_state = buffer.state.reshape((-1, self.n_agents) + self.state_shape)
-            #print(f'Hi')
         else:
-            #print(f'Hi2')
             b_state = None
 
-        
         if self.latent_kl:
             # old_observation - shifted tensor (the zero-th obs is assumed to be equal to the first one)
             b_obs_old = b_obs.clone()
             b_obs_old[1:] = b_obs_old.clone()[:-1]
-        else:   
+        else:
             b_obs_old = None
 
         b_logprobs = buffer.logprobs.reshape(-1, self.n_agents)
 
-        if self.continuous_action:
-            b_actions = buffer.actions.reshape(
-                (-1, self.n_agents)+self.action_shape)
-        else:
-            b_actions = buffer.actions.reshape((-1, self.n_agents))
+        b_actions = buffer.actions.reshape((-1, self.n_agents))
 
-        b_action_masks = buffer.action_masks.reshape((-1, self.n_agents)+self.action_shape)    
+        b_action_masks = buffer.action_masks.reshape(
+            (-1, self.n_agents) + self.action_shape
+        )
         b_advantages = advantages.reshape(-1, self.n_agents)
         b_returns = returns.reshape(-1, self.n_agents)
         b_values = buffer.values.reshape(-1, self.n_agents)
 
         # Optimizing the policy and value network
-        b_inds = np.arange(self.batch_size)
+        bt_inds = np.arange(self.batch_size)
+        bt_inds = bt_inds.reshape(self.rollout_threads, -1)
+        b_idx = np.arange(self.rollout_threads)
         clipfracs = []
-        for epoch in range(self.update_epochs):
-            np.random.shuffle(b_inds)
-            for start in range(0, self.batch_size, self.minibatch_size):
-                end = start + self.minibatch_size
-                mb_inds = b_inds[start:end]
 
+        for epoch in range(self.update_epochs):
+            np.random.shuffle(b_idx)
+
+            self.init_hidden()
+            if self.use_policy_pool:
+                for j in range(self.n_policy):
+                    for i in range(self.n_agents):
+                        self.hidden_state[j][i] = self.hidden_state[j][i].repeat(
+                            self.rollout_threads, 1
+                        )
+            else:
+                for i in range(self.n_agents):
+                    self.hidden_state[i] = self.hidden_state[i].repeat(
+                        self.rollout_threads, 1
+                    )
+
+            t_logratio = []
+            t_ratio = []
+            tmb_advantages = []
+            t_newvalue = []
+            tb_returns = []
+            tb_values = []
+
+            for t in range(self.batch_size // self.rollout_threads):
+                mb_inds = bt_inds[b_idx, t]
                 if b_state is not None:
-                    if self.continuous_action:
-                        _, newlogprob, entropy, newvalue, KL = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], None, b_actions[mb_inds], b_obs_old)
-                    else:
-                        _, newlogprob, entropy, newvalue, KL = self.get_action_and_value(b_obs[mb_inds], b_state[mb_inds], b_action_masks[mb_inds], b_actions.long()[mb_inds], b_obs_old)
+                    (
+                        _,
+                        newlogprob,
+                        entropy,
+                        newvalue,
+                        KL,
+                        self.hidden_state,
+                    ) = self.get_action_and_value(
+                        b_obs[mb_inds],
+                        b_state[mb_inds],
+                        b_action_masks[mb_inds],
+                        b_actions.long()[mb_inds],
+                        b_obs_old,
+                        self.hidden_state,
+                    )
                 else:
-                    if self.continuous_action:
-                        _, newlogprob, entropy, newvalue, KL = self.get_action_and_value(b_obs[mb_inds], None, None, b_actions[mb_inds], b_obs_old)
-                    else:
-                        _, newlogprob, entropy, newvalue, KL= self.get_action_and_value(b_obs[mb_inds], None, b_action_masks[mb_inds], b_actions.long()[mb_inds], b_obs_old)
-                
+                    (
+                        _,
+                        newlogprob,
+                        entropy,
+                        newvalue,
+                        KL,
+                        self.hidden_state,
+                    ) = self.get_action_and_value(
+                        b_obs[mb_inds],
+                        None,
+                        b_action_masks[mb_inds],
+                        b_actions.long()[mb_inds],
+                        b_obs_old,
+                        self.hidden_state,
+                    )
+                logratio = newlogprob - b_logprobs[mb_inds]
+                ratio = logratio.exp()
+                mb_advantages = b_advantages[mb_inds]
 
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
-
-                with torch.no_grad():
-                    # calculate approx_kl http://joschu.net/blog/kl-approx.html
-                    old_approx_kl = (-logratio).mean()
-                    approx_kl = ((ratio - 1) - logratio).mean()
-                    clipfracs += [((ratio - 1.0).abs() >
-                                   self.clip_coef).float().mean().item()]
-
                 mb_advantages = b_advantages[mb_inds]
-                if self.norm_adv:
-                    mb_advantages = (
-                        mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
-                # Policy loss
-                pg_loss1 = -mb_advantages * ratio
-                pg_loss2 = -mb_advantages * \
-                    torch.clamp(ratio, 1 - self.clip_coef, 1 + self.clip_coef)
-                pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+                t_logratio.append(logratio)
+                t_ratio.append(ratio)
+                tmb_advantages.append(mb_advantages)
+                t_newvalue.append(newvalue)
+                tb_returns.append(b_returns[mb_inds])
+                tb_values.append(b_values[mb_inds])
 
-                # Value loss
+            t_logratio = torch.cat(t_logratio, dim=0)
+            t_ratio = torch.cat(t_ratio, dim=0)
+            tmb_advantages = torch.cat(tmb_advantages, dim=0)
+            t_newvalue = torch.cat(t_newvalue, dim=0)
+            tb_returns = torch.cat(tb_returns, dim=0)
+            tb_values = torch.cat(tb_values, dim=0)
 
-                if self.clip_vloss:
-                    v_loss_unclipped = (newvalue - b_returns[mb_inds]) ** 2
-                    v_clipped = b_values[mb_inds] + torch.clamp(
-                        newvalue - b_values[mb_inds],
-                        -self.clip_coef,
-                        self.clip_coef,
-                    )
-                    v_loss_clipped = (v_clipped - b_returns[mb_inds]) ** 2
-                    v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
-                    v_loss = 0.5 * v_loss_max.mean()
-                else:
-                    v_loss = 0.5 * \
-                        ((newvalue - b_returns[mb_inds]) ** 2).mean()
+            with torch.no_grad():
+                # calculate approx_kl http://joschu.net/blog/kl-approx.html
+                old_approx_kl = (-t_logratio).mean()
+                approx_kl = ((t_ratio - 1) - t_logratio).mean()
+                clipfracs += [
+                    ((t_ratio - 1.0).abs() > self.clip_coef).float().mean().item()
+                ]
 
-                entropy_loss = entropy.mean()
+            if self.norm_adv:
+                tmb_advantages = (tmb_advantages - tmb_advantages.mean()) / (
+                    tmb_advantages.std() + 1e-8
+                )
 
-                loss = pg_loss - self.ent_coef * entropy_loss + v_loss * self.vf_coef
+            # Policy loss
+            pg_loss1 = -tmb_advantages * t_ratio
+            pg_loss2 = -tmb_advantages * torch.clamp(
+                t_ratio, 1 - self.clip_coef, 1 + self.clip_coef
+            )
+            pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
-                self.optimizer.zero_grad()
-                
-    
-                (loss+KL).backward()
-                
-                nn.utils.clip_grad_norm_(self.parameters(), self.max_grad_norm)
-                self.optimizer.step()
+            # Value loss
+
+            if self.clip_vloss:
+                v_loss_unclipped = (t_newvalue - tb_returns) ** 2
+                v_clipped = tb_values + torch.clamp(
+                    t_newvalue - tb_values,
+                    -self.clip_coef,
+                    self.clip_coef,
+                )
+                v_loss_clipped = (v_clipped - tb_returns) ** 2
+                v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
+                v_loss = 0.5 * v_loss_max.mean()
+            else:
+                v_loss = 0.5 * ((t_newvalue - tb_returns) ** 2).mean()
+
+            entropy_loss = entropy.mean()
+
+            loss = pg_loss - self.ent_coef * entropy_loss + v_loss * self.vf_coef
+
+            self.optimizer.zero_grad()
+
+            (loss + KL).backward()
+
+            nn.utils.clip_grad_norm_(self.parameters(), self.max_grad_norm)
+            self.optimizer.step()
 
             if self.target_kl is not None:
                 if approx_kl > self.target_kl:
@@ -547,51 +588,55 @@ class SAF(nn.Module):
 
         y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
         var_y = np.var(y_true)
-        explained_var = np.nan if var_y == 0 else 1 - \
-            np.var(y_true - y_pred) / var_y
+        explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
         metrics = {
-            'pg_loss': pg_loss.item(),
-            'v_loss': v_loss.item(),
-            'entropy_loss': entropy_loss.item(),
-            'old_approx_kl': old_approx_kl.item(),
-            'approx_kl': approx_kl.item(),
-            'clipfracs': np.mean(clipfracs),
-            'explained_var': explained_var,
+            "pg_loss": pg_loss.item(),
+            "v_loss": v_loss.item(),
+            "entropy_loss": entropy_loss.item(),
+            "old_approx_kl": old_approx_kl.item(),
+            "approx_kl": approx_kl.item(),
+            "clipfracs": np.mean(clipfracs),
+            "explained_var": explained_var,
             "latent_KL": KL,
         }
         return metrics
 
     def save_checkpoints(self, checkpoint_dir):
         if self.type == "conv":
-            torch.save(self.conv.state_dict(), os.path.join(checkpoint_dir, 'conv.pth'))
-        torch.save(self.SAF.state_dict(), os.path.join(checkpoint_dir, 'saf.pth'))
-        if self.continuous_action: 
-            torch.save(self.actor_mean.state_dict(), os.path.join(checkpoint_dir, 'actor_mean.pth'))
-            torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
-            if self.shared_actor:
-                state = dict(actor_logstd=self.actor_logstd)
-                torch.save(state, os.path.join(checkpoint_dir, 'actor_logstd.pth'))
-            else:
-                torch.save(self.actor_logstd.state_dict(), os.path.join(checkpoint_dir, 'actor_logstd.pth'))
-        else:
-            torch.save(self.actor.state_dict(), os.path.join(checkpoint_dir, 'actor.pth'))
-            torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, 'critic.pth'))
-    
+            torch.save(self.conv.state_dict(), os.path.join(checkpoint_dir, "conv.pth"))
+        torch.save(self.SAF.state_dict(), os.path.join(checkpoint_dir, "saf.pth"))
+
+        torch.save(self.actor.state_dict(), os.path.join(checkpoint_dir, "actor.pth"))
+        torch.save(self.critic.state_dict(), os.path.join(checkpoint_dir, "critic.pth"))
+
     def load_checkpoints(self, checkpoint_dir):
         if self.type == "conv":
-            self.conv.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'conv.pth'), map_location=lambda storage, loc: storage))
-        self.SAF.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'saf.pth'), map_location=lambda storage, loc: storage))
-        if self.continuous_action: 
-            self.actor_mean.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor_mean.pth'), map_location=lambda storage, loc: storage))
-            self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))
-            if self.shared_actor:
-                self.actor_logstd = torch.load(os.path.join(checkpoint_dir, 'actor_logstd.pth'))['actor_logstd']
-            else:
-                self.actor_logstd.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor_logstd.pth'), map_location=lambda storage, loc: storage))
-        else:
-            self.actor.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'actor.pth'), map_location=lambda storage, loc: storage))
-            self.critic.load_state_dict(torch.load(os.path.join(checkpoint_dir, 'critic.pth'), map_location=lambda storage, loc: storage))
+            self.conv.load_state_dict(
+                torch.load(
+                    os.path.join(checkpoint_dir, "conv.pth"),
+                    map_location=lambda storage, loc: storage,
+                )
+            )
+        self.SAF.load_state_dict(
+            torch.load(
+                os.path.join(checkpoint_dir, "saf.pth"),
+                map_location=lambda storage, loc: storage,
+            )
+        )
+
+        self.actor.load_state_dict(
+            torch.load(
+                os.path.join(checkpoint_dir, "actor.pth"),
+                map_location=lambda storage, loc: storage,
+            )
+        )
+        self.critic.load_state_dict(
+            torch.load(
+                os.path.join(checkpoint_dir, "critic.pth"),
+                map_location=lambda storage, loc: storage,
+            )
+        )
 
 
 # Input adapater for perceiver
@@ -599,8 +644,7 @@ class agent_input_adapter(InputAdapter):
     def __init__(self, max_seq_len: int, num_input_channels: int):
         super().__init__(num_input_channels=num_input_channels)
 
-        self.pos_encoding = nn.Parameter(
-            torch.empty(max_seq_len, num_input_channels))
+        self.pos_encoding = nn.Parameter(torch.empty(max_seq_len, num_input_channels))
         self.scale = math.sqrt(num_input_channels)
         self._init_parameters()
 
@@ -618,7 +662,19 @@ class agent_input_adapter(InputAdapter):
 
 
 class Communication_and_policy(nn.Module):
-    def __init__(self, input_dim, key_dim, N_SK_slots, n_agents, n_policy, hidden_dim, n_layers, activation, latent_kl, latent_dim):
+    def __init__(
+        self,
+        input_dim,
+        key_dim,
+        N_SK_slots,
+        n_agents,
+        n_policy,
+        hidden_dim,
+        n_layers,
+        activation,
+        latent_kl,
+        latent_dim,
+    ):
         super(Communication_and_policy, self).__init__()
         self.N_SK_slots = N_SK_slots
 
@@ -636,40 +692,54 @@ class Communication_and_policy(nn.Module):
         self.n_layers = n_layers
         self.activation = activation
 
-        self.device = torch.device(
-            'cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.policy_keys = torch.nn.Parameter(
-            torch.randn(self.n_policy, 1, key_dim)).to(self.device)
+            torch.randn(self.n_policy, 1, key_dim)
+        ).to(self.device)
         self.policy_attn = nn.MultiheadAttention(
-            embed_dim=key_dim, num_heads=1, batch_first=False)
+            embed_dim=key_dim, num_heads=1, batch_first=False
+        )
 
-        self.query_projector_s1 = MLP(input_dim,
-                                      [self.hidden_dim]*self.n_layers,
-                                      key_dim,
-                                      std=1.0,
-                                      activation=self.activation)  # for sending out message to sk
+        self.query_projector_s1 = MLP(
+            input_dim,
+            [self.hidden_dim] * self.n_layers,
+            key_dim,
+            std=1.0,
+            activation=self.activation,
+        )  # for sending out message to sk
 
-        self.original_state_projector = MLP(input_dim,
-                                            [self.hidden_dim]*self.n_layers,
-                                            key_dim,
-                                            std=1.0,
-                                            activation=self.activation)  # original agent's own state
-        self.policy_query_projector = MLP(input_dim,
-                                          [self.hidden_dim]*self.n_layers,
-                                          key_dim,
-                                          std=1.0,
-                                          activation=self.activation)  # for query-key attention pick policy form pool
+        self.original_state_projector = MLP(
+            input_dim,
+            [self.hidden_dim] * self.n_layers,
+            key_dim,
+            std=1.0,
+            activation=self.activation,
+        )  # original agent's own state
+        self.policy_query_projector = MLP(
+            input_dim,
+            [self.hidden_dim] * self.n_layers,
+            key_dim,
+            std=1.0,
+            activation=self.activation,
+        )  # for query-key attention pick policy form pool
 
-        self.combined_state_projector = MLP(2*key_dim,
-                                            [self.hidden_dim]*self.n_layers,
-                                            key_dim,
-                                            std=1.0,
-                                            activation=self.activation).to(self.device)  # responsible for independence of the agent
+        self.combined_state_projector = MLP(
+            2 * key_dim,
+            [self.hidden_dim] * self.n_layers,
+            key_dim,
+            std=1.0,
+            activation=self.activation,
+        ).to(
+            self.device
+        )  # responsible for independence of the agent
         # shared knowledge(workspace)
 
-        input_adapter = agent_input_adapter(num_input_channels=key_dim, max_seq_len=n_agents).to(
-            self.device)  # position encoding included as well, so we know which agent is which
+        input_adapter = agent_input_adapter(
+            num_input_channels=key_dim, max_seq_len=n_agents
+        ).to(
+            self.device
+        )  # position encoding included as well, so we know which agent is which
 
         self.PerceiverEncoder = PerceiverEncoder(
             input_adapter=input_adapter,
@@ -693,11 +763,11 @@ class Communication_and_policy(nn.Module):
 
         if self.latent_kl:
             self.encoder = nn.Sequential(
-                nn.Linear(int(2*key_dim), 64),
+                nn.Linear(int(2 * key_dim), 64),
                 nn.Tanh(),
                 nn.Linear(64, 64),
                 nn.Tanh(),
-                nn.Linear(64, int(2*self.latent_dim)),
+                nn.Linear(64, int(2 * self.latent_dim)),
             ).to(self.device)
 
             self.encoder_prior = nn.Sequential(
@@ -705,7 +775,7 @@ class Communication_and_policy(nn.Module):
                 nn.Tanh(),
                 nn.Linear(64, 64),
                 nn.Tanh(),
-                nn.Linear(64, int(2*self.latent_dim)),
+                nn.Linear(64, int(2 * self.latent_dim)),
             ).to(self.device)
 
         self.previous_state = torch.randn(5, 1, key_dim).to(self.device)
@@ -719,7 +789,8 @@ class Communication_and_policy(nn.Module):
         # message (bsz,N_agent,dim), for communication
         message_to_send = self.query_projector_s1(state)
         state_encoded = self.original_state_projector(
-            state)  # state_encoded, for agent's internal uses
+            state
+        )  # state_encoded, for agent's internal uses
 
         # use perceiver arttecture to collect information from all agents by attention
 
@@ -730,14 +801,13 @@ class Communication_and_policy(nn.Module):
         # shape (bsz,N_agents,2*dim)
         state_with_message = torch.cat([state_encoded, message], 2)
 
-        state_with_message = state_with_message.permute(
-            1, 0, 2)  # (N_agents,bsz,2*dim)
+        state_with_message = state_with_message.permute(1, 0, 2)  # (N_agents,bsz,2*dim)
 
         state_with_message = self.combined_state_projector(
-            state_with_message)  # (N_agents,bsz,dim)
+            state_with_message
+        )  # (N_agents,bsz,dim)
 
-        state_with_message = state_with_message.permute(
-            1, 0, 2)  # (bsz,N_agents,dim)
+        state_with_message = state_with_message.permute(1, 0, 2)  # (bsz,N_agents,dim)
 
         # print(state_with_message.shape)
         return state_with_message
@@ -748,23 +818,27 @@ class Communication_and_policy(nn.Module):
         N_agents, bsz, Embsz = state.shape
         state = state.permute(1, 0, 2)
         state_encoded = self.original_state_projector(
-            state)  # state_encoded, for agent's internal uses
+            state
+        )  # state_encoded, for agent's internal uses
 
-        state_without_message = torch.cat([state_encoded, torch.zeros(
-            state_encoded.shape).to(self.device)], 2)  # without information from other agents
+        state_without_message = torch.cat(
+            [state_encoded, torch.zeros(state_encoded.shape).to(self.device)], 2
+        )  # without information from other agents
 
         state_without_message = state_without_message.permute(
-            1, 0, 2)  # (N_agents,bsz,2*dim)
+            1, 0, 2
+        )  # (N_agents,bsz,2*dim)
 
         state_without_message = self.combined_state_projector(
-            state_without_message)  # (N_agents,bsz,dim)
+            state_without_message
+        )  # (N_agents,bsz,dim)
 
         return state_without_message
 
     def Run_policy_attention(self, state):
-        '''
+        """
         state hasshape (bsz,N_agents,embsz)
-        '''
+        """
         state = state.permute(1, 0, 2)  # (N_agents,bsz,embsz)
         state = state.to(self.device)
         # how to pick rules and if they are shared across agents
@@ -776,20 +850,30 @@ class Communication_and_policy(nn.Module):
         _, attention_score = self.policy_attn(query, keys, keys)
 
         attention_score = nn.functional.gumbel_softmax(
-            attention_score, tau=1, hard=True, dim=2)  # (Bz, N_agents , N_behavior)
+            attention_score, tau=1, hard=True, dim=2
+        )  # (Bz, N_agents , N_behavior)
 
         return attention_score
 
-    def information_bottleneck(self, state_with_message, state_without_message, s_agent_previous_t):
+    def information_bottleneck(
+        self, state_with_message, state_without_message, s_agent_previous_t
+    ):
 
-
-        z_ = self.encoder(
-            torch.cat((state_with_message, state_without_message), dim=2))
+        z_ = self.encoder(torch.cat((state_with_message, state_without_message), dim=2))
         mu, sigma = z_.chunk(2, dim=2)
         z = (mu + sigma * torch.randn_like(sigma)).reshape(z_.shape[0], -1)
         z_prior = self.encoder_prior(s_agent_previous_t)
         mu_prior, sigma_prior = z_prior.chunk(2, dim=2)
-        KL = 0.5 * torch.sum(((mu - mu_prior) ** 2 + sigma ** 2)/(sigma_prior ** 2 + 1e-8) + torch.log(1e-8 + (sigma_prior ** 2)/(
-            sigma ** 2 + 1e-8)) - 1) / np.prod(torch.cat((state_with_message, state_without_message), dim=2).shape)
+        KL = (
+            0.5
+            * torch.sum(
+                ((mu - mu_prior) ** 2 + sigma**2) / (sigma_prior**2 + 1e-8)
+                + torch.log(1e-8 + (sigma_prior**2) / (sigma**2 + 1e-8))
+                - 1
+            )
+            / np.prod(
+                torch.cat((state_with_message, state_without_message), dim=2).shape
+            )
+        )
 
         return z, KL
