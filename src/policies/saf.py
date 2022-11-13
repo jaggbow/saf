@@ -38,6 +38,7 @@ class SAF(nn.Module):
         self.n_agents = params.n_agents
 
         self.batch_size = params.rollout_threads * params.env_steps
+        self.env_steps = params.env_steps
         self.rollout_threads = params.rollout_threads
         self.ent_coef = params.ent_coef
         self.vf_coef = params.vf_coef
@@ -49,6 +50,7 @@ class SAF(nn.Module):
         self.update_epochs = params.update_epochs
         self.shared_critic = params.shared_critic
         self.use_rnn = params.use_rnn
+        self.tbptt_steps = params.tbptt_steps
 
         if self.type == "conv":
             assert (
@@ -480,8 +482,21 @@ class SAF(nn.Module):
             tb_returns = []
             tb_values = []
 
-            for t in range(self.batch_size // self.rollout_threads):
+            for t in range(self.env_steps):
                 mb_inds = bt_inds[b_idx, t]
+
+                if self.tbptt_steps > 0:
+                    if t == self.env_steps - self.tbptt_steps:
+                        if self.use_policy_pool:
+                            for j in range(self.n_policy):
+                                for i in range(self.n_agents):
+                                    self.hidden_state[j][i] = self.hidden_state[j][
+                                        i
+                                    ].detach()
+                        else:
+                            for i in range(self.n_agents):
+                                self.hidden_state[i] = self.hidden_state[i].detach()
+
                 if b_state is not None:
                     (
                         _,
@@ -514,9 +529,6 @@ class SAF(nn.Module):
                         b_obs_old,
                         self.hidden_state,
                     )
-                logratio = newlogprob - b_logprobs[mb_inds]
-                ratio = logratio.exp()
-                mb_advantages = b_advantages[mb_inds]
 
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()

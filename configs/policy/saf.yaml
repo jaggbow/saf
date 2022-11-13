@@ -32,4 +32,5 @@ params:
   latent_dim: 8
   type: mlp
   use_rnn: True
+  tbptt_steps: 5 # This means that the model will only consider the last tbptt_steps for backprop and detach the rest
   conv_out_size: 64
