@@ -2,9 +2,9 @@
 
 #SBATCH --job-name=saf_marlgrid
 #SBATCH --partition=long                        
-#SBATCH --cpus-per-task=2
-#SBATCH --gres=gpu:rtx8000:1
-#SBATCH --mem=65G                                     
+#SBATCH --cpus-per-task=6
+#SBATCH --gres=gpu:1
+#SBATCH --mem=48G                                     
 #SBATCH --time=26:00:00
 
 env=$1

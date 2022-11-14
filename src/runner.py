@@ -32,7 +32,10 @@ class PGRunner:
             Path(expandvars(expanduser(str(os.getcwd())))).resolve()
             / os.environ["SLURM_JOB_ID"]
         )
-        self.save_dir.mkdir(parents=True, exist_ok=True)
+        if os.path.isdir(self.save_dir):
+            self.checkpoint_dir = self.save_dir
+        else:
+            self.save_dir.mkdir(parents=True, exist_ok=True)
 
         if isinstance(train_env.observation_space, spaces.Dict):
             self.observation_space = train_env.observation_space["observation"]
@@ -46,54 +49,37 @@ class PGRunner:
         else:
             self.action_space = train_env.action_space
 
-        test_mode = params.test_mode
+        self.test_mode = params.test_mode
 
         self.train_env = train_env
         self.eval_env = eval_env
         self.buffer = buffer
         self.policy = policy
         self.device = device
+        self.resume_comet = False
         os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         print(os.getcwd())
 
-        if self.checkpoint_dir is not None and not test_mode:
+        if self.checkpoint_dir is not None:
             print("Resuming training from", self.checkpoint_dir)
             self.load_checkpoints(self.checkpoint_dir)
-            if self.use_comet:
+            if not self.test_mode:
+                self.resume_comet = True
+
+        if self.use_comet:
+            if self.resume_comet:
                 api_key_path = Path(self.checkpoint_dir) / Path("apy_key.txt")
-
                 with open(api_key_path) as f:
-                    self.exp_api_key = f.readlines()
-                # Check to see if there is a key in environment:
-                EXPERIMENT_KEY = os.environ.get(
-                    "COMET_EXPERIMENT_KEY", self.exp_api_key[0]
-                )
-
-                # First, let's see if we continue or start fresh:
-                if EXPERIMENT_KEY is not None:
-                    # There is one, but the experiment might not exist yet:
-                    api = comet_ml.API()  # Assumes API key is set in config/env
-                    try:
-                        api_experiment = api.get_experiment_by_key(EXPERIMENT_KEY)
-                    except Exception:
-                        api_experiment = None
-                    if api_experiment is not None:
-                        CONTINUE_RUN = True
-                        # We can get the last details logged here, if logged:
-                        self.step = int(
-                            api_experiment.get_parameters_summary("curr_step")[
-                                "valueCurrent"
-                            ]
-                        )
-
-        else:
-            if test_mode:
-                print("Loading model from", self.checkpoint_dir)
-                self.load_checkpoints(self.checkpoint_dir)
-            if self.use_comet:
+                    exp_key = f.readlines()[-1]
+                self.exp = comet_ml.ExistingExperiment(previous_experiment=exp_key)
+                self.exp_key = exp_key
+                with open(Path(self.checkpoint_dir) / Path("train_step.txt")) as f:
+                    self.step = int(f.readlines()[-1])
+            else:
                 self.exp = comet_ml.Experiment(project_name=params.comet.project_name)
                 self.exp.set_name(params.comet.experiment_name)
                 self.exp_key = self.exp.get_key()
+                self.step = 0
 
     def env_reset(self, mode="train"):
         """
@@ -176,13 +162,14 @@ class PGRunner:
 
     def run(self):
 
-        global_step = 0
+        global_step = self.step
         start_time = time.time()
 
         obs, state, act_masks = self.env_reset()
         next_done = torch.zeros((self.rollout_threads, self.n_agents)).to(self.device)
 
         num_updates = self.total_timesteps // self.batch_size
+        start_update = self.step // self.batch_size
         best_return = -1e9
 
         if self.latent_kl:
@@ -200,16 +187,11 @@ class PGRunner:
         else:
             obs_old = None
 
-        if not os.path.exists(self.save_dir):
+        api_key_path = Path(self.save_dir) / Path("apy_key.txt")
+        with open(api_key_path, "w") as f:
+            f.write(self.exp_key)
 
-            os.chdir(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
-            os.makedirs(self.save_dir, exist_ok=True)
-            api_key_path = Path(self.save_dir) / Path("apy_key.txt")
-
-            with open(api_key_path, "w") as f:
-                f.write(self.exp_key)
-
-        for update in range(1, num_updates + 1):
+        for update in range(start_update + 1, num_updates + 1):
             if self.lr_decay:
                 self.policy.update_lr(update, num_updates)
 
@@ -221,7 +203,10 @@ class PGRunner:
             if self.policy.use_rnn:
                 self.policy.init_hidden()
                 hidden_state = self.policy.hidden_state
-                if self.policy.use_policy_pool:
+                if (
+                    hasattr(self.policy, "use_policy_pool")
+                    and self.policy.use_policy_pool
+                ):
                     for j in range(self.policy.n_policy):
                         for i in range(self.n_agents):
                             hidden_state[j][i] = hidden_state[j][i].repeat(
@@ -318,6 +303,10 @@ class PGRunner:
                 if self.use_comet:
                     self.exp.log_metric("episodic_return", total_rewards, global_step)
 
+            api_key_path = Path(self.save_dir) / Path("train_step.txt")
+            with open(api_key_path, "w") as f:
+                f.write(str(global_step))
+
             if total_rewards >= best_return:
                 print(f"global_step={global_step}: Checkpoint saved!")
                 self.save_checkpoints(self.save_dir)
@@ -396,7 +385,10 @@ class PGRunner:
             if self.policy.use_rnn:
                 self.policy.init_hidden()
                 hidden_state = self.policy.hidden_state
-                if self.policy.use_policy_pool:
+                if (
+                    hasattr(self.policy, "use_policy_pool")
+                    and self.policy.use_policy_pool
+                ):
                     for j in range(self.policy.n_policy):
                         for i in range(self.n_agents):
                             hidden_state[j][i] = hidden_state[j][i].repeat(
