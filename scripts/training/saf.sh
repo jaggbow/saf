@@ -2,10 +2,10 @@
 
 #SBATCH --job-name=saf_marlgrid
 #SBATCH --partition=long                        
-#SBATCH --cpus-per-task=2
-#SBATCH --gres=gpu:rtx8000:1
-#SBATCH --mem=65G                                     
-#SBATCH --time=24:00:00
+#SBATCH --cpus-per-task=6
+#SBATCH --gres=gpu:1
+#SBATCH --mem=48G                                     
+#SBATCH --time=56:00:00
 
 env=$1
 N_agents=$2
@@ -42,11 +42,11 @@ policy=${Method} \
 policy.params.type=conv \
 policy.params.activation=tanh \
 policy.params.update_epochs=10 \
-policy.params.num_minibatches=1 \
 policy.params.learning_rate=0.0007 \
 policy.params.clip_vloss=True \
 runner.params.lr_decay=False \
 runner.params.comet.project_name=$ProjectName \
 use_policy_pool=${use_policy_pool} \
 latent_kl=${latent_kl} \
+policy.params.use_rnn=True
 

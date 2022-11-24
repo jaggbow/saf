@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:rtx8000:1
 #SBATCH --mem=65G                                     
-#SBATCH --time=24:00:00
+#SBATCH --time=54:00:00
 
 #param_store=scripts/seeds.txt
 #seed=$(cat $param_store | awk -v var=$SLURM_ARRAY_TASK_ID 'NR==var {print $1}')

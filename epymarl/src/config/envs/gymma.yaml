@@ -1,0 +1,23 @@
+env: "gymma"
+
+env_args:
+  key: null
+  time_limit: 50
+  pretrained_wrapper: null
+  grid_size: 30
+  view_size: 7
+  view_tile_size: 4
+  clutter_density: 0.1
+  coordination: 1
+  heterogeneity: 1
+  use_cnn: True
+
+test_greedy: True
+test_nepisode: 100
+test_interval: 50000
+log_interval: 5000
+runner_log_interval: 1000
+learner_log_interval: 1000
+t_max: 10000000
+use_tensorboard: True
+save_model: True

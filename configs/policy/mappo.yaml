@@ -23,4 +23,6 @@ params:
   shared_actor: True
   continuous_action: ${continuous_action}
   type: mlp
+  use_rnn: True
+  tbptt_steps: -1
   conv_out_size: 64
