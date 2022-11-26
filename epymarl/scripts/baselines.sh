@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --gres=gpu:1
 #SBATCH --mem=48G                                     
-#SBATCH --time=50:00:00
+#SBATCH --time=90:00:00
 
 
 env=$1

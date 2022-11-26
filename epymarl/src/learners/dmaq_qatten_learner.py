@@ -212,6 +212,7 @@ class DMAQ_qattenLearner:
         th.save(self.optimiser.state_dict(), "{}/opt.th".format(path))
 
     def load_models(self, path):
+        print("*********loding path*****",path)
         self.mac.load_models(path)
         # Not quite right but I don't want to save target networks
         self.target_mac.load_models(path)
