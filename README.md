@@ -20,7 +20,7 @@ pip install -e .
 ```
 
 # HECOGrid Environment
-Coming soon...
+The code and installation guide for HECOGrid can be found [here](https://github.com/veds12/hecogrid).
 
 # Experiments
 You can find scripts to run experiments in the folder ``scripts``. It is structured as follows:
